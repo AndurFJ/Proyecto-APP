@@ -1,7 +1,7 @@
 """
 Ventana de Aducción / Conducción.
 
-Segundo proceso de diseño de la PTAP: a partir del caudal de diseño
+Proceso de diseño de la PTAP (después del desarenador): a partir del caudal de diseño
 (Paso 2) y de un diámetro comercial elegido por el usuario, calcula
 el área, la velocidad resultante y la pérdida de carga (fórmula de
 Hazen-Williams) de la línea de aducción o conducción — siguiendo los
@@ -88,7 +88,7 @@ class VentanaAduccionConduccion(tk.Toplevel):
 
         subtitulo = tk.Label(
             self, text="Art. 56, Resolución 0330 de 2017 (modificado por Res. 799 de 2021)",
-            font=("Arial", 8, "italic"), bg="#1F4E78", fg="#D9E1F2", pady=(0, 6),
+            font=("Arial", 8, "italic"), bg="#1F4E78", fg="#D9E1F2", pady=6,
         )
         subtitulo.pack(fill="x")
 

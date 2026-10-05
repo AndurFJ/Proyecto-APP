@@ -301,6 +301,44 @@ def _seccion_desarenador(story, estilos):
     story.append(PageBreak())
 
 
+def _seccion_aduccion_conduccion(story, estilos):
+    story.append(Paragraph("5. Aducción / Conducción", estilos["seccion"]))
+    story.append(Paragraph(
+        "Diámetro comercial evaluado con la fórmula de Hazen-Williams, "
+        "según el Art. 56 de la Resolución 0330 de 2017 (modificado por "
+        "la Res. 799 de 2021).",
+        estilos["normal"],
+    ))
+    story.append(Spacer(1, 8))
+
+    presion = EstadoProyecto.aduccion_presion_residual
+    desnivel = EstadoProyecto.aduccion_desnivel_disponible
+    pares = [
+        ("Tipo de sistema", EstadoProyecto.aduccion_tipo_sistema),
+        ("Material de la tubería", EstadoProyecto.aduccion_material),
+        ("Coeficiente de Hazen-Williams — C", f"{EstadoProyecto.aduccion_c_hazen_williams:,.0f}"),
+        ("Longitud de la línea (m)", f"{EstadoProyecto.aduccion_longitud:,.1f}"),
+        ("Diámetro comercial (mm)", f"{EstadoProyecto.aduccion_diametro_mm:,.0f}"),
+        ("Área de la tubería (m²)", f"{EstadoProyecto.aduccion_area:,.4f}"),
+        ("Velocidad resultante (m/s)", f"{EstadoProyecto.aduccion_velocidad:,.3f}"),
+        ("Velocidad mínima normativa (m/s)", f"{EstadoProyecto.aduccion_v_min:,.2f}"),
+        ("Velocidad máxima admisible (m/s)", f"{EstadoProyecto.aduccion_v_max:,.2f}"),
+        ("Pérdida de carga — Hazen-Williams (m)", f"{EstadoProyecto.aduccion_perdida_carga:,.3f}"),
+        ("Factor de seguridad por golpe de ariete", f"{EstadoProyecto.aduccion_factor_seguridad_ariete:,.2f}"),
+        ("Desnivel disponible (m)", f"{desnivel:,.2f}" if desnivel is not None else "—"),
+        ("Cabeza residual disponible (m)", f"{presion:,.3f}" if presion is not None else "—"),
+    ]
+    story.append(_tabla_datos(pares, estilos))
+    story.append(Spacer(1, 12))
+
+    story.append(_marco_resultado_final(
+        f"DIÁMETRO ADOPTADO: {EstadoProyecto.aduccion_diametro_mm:,.0f} mm — "
+        f"V = {EstadoProyecto.aduccion_velocidad:,.3f} m/s",
+        estilos,
+    ))
+    story.append(PageBreak())
+
+
 # ----------------------------------------------------------------------
 # Mapa: (¿está definida esta sección?) -> función que la escribe.
 # Para agregar un proceso nuevo, solo se añade una tupla aquí.
@@ -309,6 +347,7 @@ SECCIONES = [
     (lambda: EstadoProyecto.caudal_definido(), _seccion_caudal_diseno),
     (lambda: EstadoProyecto.rejilla_definida(), _seccion_bocatoma_rejilla),
     (lambda: EstadoProyecto.desarenador_definido(), _seccion_desarenador),
+    (lambda: EstadoProyecto.aduccion_definida(), _seccion_aduccion_conduccion),
 ]
 
 
