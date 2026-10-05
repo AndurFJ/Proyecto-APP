@@ -106,6 +106,47 @@ class EstadoProyecto:
     desarenador_longitud_total = None    # m, longitud desarrollada total (todos los tramos)
     desarenador_ancho_total_estructura = None  # m, ancho de toda la estructura plegada
 
+    # --- Mezcla rápida: Canaleta Parshall (Paso 5 - PTAP) ---
+    mezcla_temperatura = None          # °C
+    mezcla_ancho_garganta = None       # clave de la canaleta, ej. '9"' o "1'"
+    mezcla_w = None                    # m, ancho de garganta
+    mezcla_k = None                    # coeficiente K de Q = K·Ha^n
+    mezcla_n = None                    # exponente n de Q = K·Ha^n
+    mezcla_dimensiones_cm = None       # dict A, B, C, D, E, F, G, K, N (cm)
+    mezcla_ha = None                   # m, lámina en la sección de medición
+    mezcla_relacion_ha_w = None        # adimensional (recomendado 0.4-0.8)
+    mezcla_d_prima = None              # m, ancho en la sección de medición
+    mezcla_vo = None                   # m/s
+    mezcla_eo = None                   # m, energía específica
+    mezcla_v1 = None                   # m/s, velocidad en la garganta
+    mezcla_h1 = None                   # m
+    mezcla_froude = None               # adimensional
+    mezcla_h2 = None                   # m, altura conjugada del resalto
+    mezcla_v2 = None                   # m/s
+    mezcla_h3 = None                   # m, lámina a la salida
+    mezcla_v3 = None                   # m/s
+    mezcla_perdida = None              # m, pérdida en el resalto (hp)
+    mezcla_tiempo = None               # s, tiempo de mezcla
+    mezcla_gradiente = None            # s-1
+    mezcla_cumple = None               # bool
+
+    # --- Floculación: Floculador hidráulico de pantallas (Paso 6 - PTAP) ---
+    floculacion_num_unidades = None
+    floculacion_q_unidad = None        # m³/s
+    floculacion_temperatura = None     # °C
+    floculacion_profundidad = None     # m
+    floculacion_ancho_tanque = None    # m (longitud de las pantallas)
+    floculacion_espesor_pantalla = None  # m
+    floculacion_manning = None
+    floculacion_k_vueltas = None
+    floculacion_zonas = None           # lista de dicts (uno por zona)
+    floculacion_t_total = None         # min
+    floculacion_perdida_total = None   # m
+    floculacion_gradiente_medio = None  # s-1
+    floculacion_longitud_total = None  # m
+    floculacion_volumen = None         # m³ por unidad
+    floculacion_cumple = None          # bool
+
     @classmethod
     def esta_definido(cls):
         return cls.poblacion_diseño is not None
@@ -125,6 +166,14 @@ class EstadoProyecto:
     @classmethod
     def desarenador_definido(cls):
         return cls.desarenador_longitud is not None
+
+    @classmethod
+    def mezcla_rapida_definida(cls):
+        return cls.mezcla_gradiente is not None
+
+    @classmethod
+    def floculacion_definida(cls):
+        return cls.floculacion_longitud_total is not None
 
     @classmethod
     def resumen(cls):
@@ -192,4 +241,28 @@ class EstadoProyecto:
             f"{cls.desarenador_ancho:,.2f} × {cls.desarenador_profundidad:,.2f} m{texto_tramos}\n"
             f"Vs: {cls.desarenador_vs:,.5f} m/s   Vh: {cls.desarenador_vh:,.3f} m/s   "
             f"Tiempo de retención: {cls.desarenador_t_retencion_min:,.1f} min"
+        )
+
+    @classmethod
+    def resumen_mezcla_rapida(cls):
+        if not cls.mezcla_rapida_definida():
+            return "Mezcla rápida aún no calculada."
+        return (
+            f"Canaleta Parshall W = {cls.mezcla_ancho_garganta} ({cls.mezcla_w * 100:g} cm)\n"
+            f"Ha: {cls.mezcla_ha:,.3f} m   F1: {cls.mezcla_froude:,.2f}   "
+            f"hp: {cls.mezcla_perdida:,.3f} m\n"
+            f"G: {cls.mezcla_gradiente:,.0f} s⁻¹   t de mezcla: {cls.mezcla_tiempo:,.2f} s"
+        )
+
+    @classmethod
+    def resumen_floculacion(cls):
+        if not cls.floculacion_definida():
+            return "Floculador aún no calculado."
+        gradientes = " → ".join(f"{z['gradiente']:,.1f}" for z in cls.floculacion_zonas)
+        return (
+            f"{cls.floculacion_num_unidades} unidad(es) — "
+            f"Q por unidad: {cls.floculacion_q_unidad:,.5f} m³/s\n"
+            f"Dimensiones (L×B×h): {cls.floculacion_longitud_total:,.2f} × "
+            f"{cls.floculacion_ancho_tanque:,.2f} × {cls.floculacion_profundidad:,.2f} m\n"
+            f"t total: {cls.floculacion_t_total:,.1f} min   G por zona: {gradientes} s⁻¹"
         )
