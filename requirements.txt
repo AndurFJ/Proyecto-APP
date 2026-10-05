@@ -1,0 +1,6 @@
+# Dependencias de HydroLab (instalar con: pip install -r requirements.txt)
+# tkinter viene incluido con Python; en Linux puede requerir el paquete
+# del sistema python3-tk.
+pandas>=1.5
+matplotlib>=3.6
+reportlab>=3.6
