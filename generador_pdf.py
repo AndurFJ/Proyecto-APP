@@ -15,6 +15,7 @@ siga el mismo patrón, y añadirla en generar_informe_pdf() dentro del
 import os
 import tempfile
 from datetime import datetime
+from xml.sax.saxutils import escape
 
 import matplotlib
 matplotlib.use("Agg")
@@ -31,6 +32,7 @@ from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 
 from estado_proyecto import EstadoProyecto
+from ptar_calculos import ESTRUCTURAS_PTAR
 
 # ----------------------------------------------------------------------
 # Fuente Unicode (Helvetica NO incluye ², ³, Δ, etc. y los deja en blanco).
@@ -42,13 +44,17 @@ CARPETA_FUENTES = os.path.join(CARPETA_SCRIPT, "fuentes")
 FUENTE_NORMAL = "Helvetica"
 FUENTE_NEGRITA = "Helvetica-Bold"
 
-try:
-    pdfmetrics.registerFont(TTFont("DejaVuSans", os.path.join(CARPETA_FUENTES, "DejaVuSans.ttf")))
-    pdfmetrics.registerFont(TTFont("DejaVuSans-Bold", os.path.join(CARPETA_FUENTES, "DejaVuSans-Bold.ttf")))
-    FUENTE_NORMAL = "DejaVuSans"
-    FUENTE_NEGRITA = "DejaVuSans-Bold"
-except Exception:
-    pass  # si no se encuentra la fuente, se sigue con Helvetica (símbolos especiales pueden fallar)
+# Se busca en "fuentes/" y, si no está ahí, junto a este archivo (que es
+# donde vienen los .ttf en el repositorio).
+for _carpeta in (CARPETA_FUENTES, CARPETA_SCRIPT):
+    try:
+        pdfmetrics.registerFont(TTFont("DejaVuSans", os.path.join(_carpeta, "DejaVuSans.ttf")))
+        pdfmetrics.registerFont(TTFont("DejaVuSans-Bold", os.path.join(_carpeta, "DejaVuSans-Bold.ttf")))
+        FUENTE_NORMAL = "DejaVuSans"
+        FUENTE_NEGRITA = "DejaVuSans-Bold"
+        break
+    except Exception:
+        pass  # si no se encuentra la fuente, se sigue con Helvetica (símbolos especiales pueden fallar)
 
 AZUL = colors.HexColor("#1F4E78")
 VERDE = colors.HexColor("#1E8449")
@@ -302,6 +308,51 @@ def _seccion_desarenador(story, estilos):
 
 
 # ----------------------------------------------------------------------
+# PTAR — todas las estructuras guardan el mismo formato (ver
+# ptar_calculos.py), así que una sola función escribe cualquiera de ellas.
+def _tabla_verificaciones(verificaciones, estilos):
+    estilo = ParagraphStyle("verif", parent=estilos["normal"], fontSize=8.5)
+    filas = []
+    for texto, cumple in verificaciones:
+        marca = "Cumple" if cumple else "No cumple"
+        color = "#1E8449" if cumple else "#B9770E"
+        filas.append([Paragraph(escape(str(texto)), estilo),
+                      Paragraph(f'<font color="{color}"><b>{marca}</b></font>', estilo)])
+    t = Table(filas, colWidths=[12.5 * cm, 2.5 * cm])
+    t.setStyle(TableStyle([
+        ("GRID", (0, 0), (-1, -1), 0.5, BORDE_TABLA),
+        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+        ("TOPPADDING", (0, 0), (-1, -1), 3),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
+    ]))
+    return t
+
+
+def _seccion_ptar(numero, atributo, titulo):
+    def escribir(story, estilos):
+        guardado = getattr(EstadoProyecto, atributo)
+        story.append(Paragraph(f"PTAR {numero}. {titulo}", estilos["seccion"]))
+        pares = [(escape(etq), escape(str(val))) for etq, val in guardado["filas"]]
+        story.append(_tabla_datos(pares, estilos))
+        if guardado["verificaciones"]:
+            story.append(Paragraph("Verificación — Res. 0330 de 2017 (mod. Res. 799 de 2021)",
+                                   estilos["subseccion"]))
+            story.append(_tabla_verificaciones(guardado["verificaciones"], estilos))
+        story.append(Spacer(1, 12))
+        story.append(_marco_resultado_final(
+            escape(guardado["final"]).replace("\n", "<br/>"), estilos))
+        story.append(PageBreak())
+    return escribir
+
+
+def _secciones_ptar():
+    return [
+        (lambda a=atributo: EstadoProyecto.ptar_definido(a), _seccion_ptar(i, atributo, titulo))
+        for i, (atributo, titulo) in enumerate(ESTRUCTURAS_PTAR, start=1)
+    ]
+
+
+# ----------------------------------------------------------------------
 # Mapa: (¿está definida esta sección?) -> función que la escribe.
 # Para agregar un proceso nuevo, solo se añade una tupla aquí.
 SECCIONES = [
@@ -309,7 +360,7 @@ SECCIONES = [
     (lambda: EstadoProyecto.caudal_definido(), _seccion_caudal_diseno),
     (lambda: EstadoProyecto.rejilla_definida(), _seccion_bocatoma_rejilla),
     (lambda: EstadoProyecto.desarenador_definido(), _seccion_desarenador),
-]
+] + _secciones_ptar()
 
 
 def generar_informe_pdf(ruta_salida):
@@ -332,7 +383,15 @@ def generar_informe_pdf(ruta_salida):
     story = []
 
     story.append(Paragraph("INFORME DE DISEÑO", estilos["titulo"]))
-    story.append(Paragraph("Planta de Tratamiento de Agua Potable (PTAP)", estilos["subseccion"]))
+    hay_ptar = any(EstadoProyecto.ptar_definido(a) for a, _ in ESTRUCTURAS_PTAR)
+    hay_ptap = EstadoProyecto.caudal_definido()
+    if hay_ptar and hay_ptap:
+        subtitulo = "Planta de Tratamiento de Agua Potable (PTAP) y de Aguas Residuales (PTAR)"
+    elif hay_ptar:
+        subtitulo = "Planta de Tratamiento de Aguas Residuales (PTAR)"
+    else:
+        subtitulo = "Planta de Tratamiento de Agua Potable (PTAP)"
+    story.append(Paragraph(subtitulo, estilos["subseccion"]))
     story.append(Paragraph(
         f"Generado el {datetime.now().strftime('%d/%m/%Y %H:%M')}",
         estilos["nota"],

@@ -209,6 +209,132 @@ TABLAS_REFERENCIA = [
         ],
         "notas": "El software interpola linealmente entre estos valores según la temperatura ingresada.",
     },
+
+    # ---------------- PTAR — CAUDAL DE AGUAS RESIDUALES ----------------
+    {
+        "categoria": "PTAR — Caudal de Aguas Residuales",
+        "titulo": "Aportes y Coeficientes del Caudal de Aguas Residuales",
+        "fuente": "Resolución 0330 de 2017, Art. 134 (mod. Res. 799 de 2021)",
+        "columnas": ["Parámetro", "Valor sin información local"],
+        "filas": [
+            ["Coeficiente de retorno (CR)", "0,85"],
+            ["Infiltración", "0,1 L/s·ha"],
+            ["Conexiones erradas", "máximo 0,2 L/s·ha"],
+            ["Factor de mayoración (F)", "entre 1,4 y 3,8"],
+        ],
+        "notas": (
+            "Qd = CR·P·DN/86400. El software calcula F con la fórmula de Flores "
+            "(F = 3,5 / P^0,1, P en miles de habitantes) y lo limita a 1,4 – 3,8."
+        ),
+    },
+    {
+        "categoria": "PTAR — Caudal de Aguas Residuales",
+        "titulo": "Caudal de Diseño de la PTAR",
+        "fuente": "Resolución 0330 de 2017, Art. 166 (mod. Res. 799 de 2021)",
+        "columnas": ["Tamaño de la planta", "Caudal de diseño de procesos y unidades"],
+        "filas": [
+            ["Q ≤ 30 L/s (excepto lagunas)", "3 × caudal medio de tiempo seco, sin infiltración ni conexiones erradas"],
+            ["Q > 30 L/s y sistemas lagunares", "Según Tablas 22 y 23 del Art. 166 (factores pico)"],
+        ],
+        "notas": (
+            "Para Q > 30 L/s el software usa QMH + Qinf + QCE como caudal de diseño "
+            "hidráulico y el caudal medio para los procesos biológicos."
+        ),
+    },
+
+    # ---------------- PTAR — TRATAMIENTO PRELIMINAR ----------------
+    {
+        "categoria": "PTAR — Tratamiento Preliminar",
+        "titulo": "Rejillas",
+        "fuente": "Resolución 0330 de 2017, Art. 186",
+        "columnas": ["Parámetro", "Valor"],
+        "filas": [
+            ["Rejas gruesas (separación entre barras)", "4 a 10 cm"],
+            ["Rejas medias", "2 a < 4 cm"],
+            ["Rejas finas", "1 a < 2 cm"],
+            ["Velocidad máxima con caudal máximo", "1,2 m/s"],
+            ["Velocidad con caudal mínimo", "0,3 m/s"],
+            ["Limpieza mecánica", "caudal medio ≥ 100 L/s"],
+        ],
+    },
+    {
+        "categoria": "PTAR — Tratamiento Preliminar",
+        "titulo": "Desarenadores (aguas residuales)",
+        "fuente": "Resolución 0330 de 2017, Art. 188",
+        "columnas": ["Parámetro", "Valor"],
+        "filas": [
+            ["Diámetro mínimo de partícula a remover", "0,3 mm"],
+            ["Velocidad de decantación", "0,03 m/s"],
+            ["Velocidad horizontal (velocidad constante)", "0,3 m/s"],
+            ["Número mínimo de unidades", "2"],
+        ],
+    },
+    {
+        "categoria": "PTAR — Tratamiento Preliminar",
+        "titulo": "Trampas de Grasa",
+        "fuente": "Resolución 0330 de 2017, Art. 185 y Art. 172",
+        "columnas": ["Parámetro", "Valor"],
+        "filas": [
+            ["Tiempo de retención mínimo", "2,5 min"],
+            ["Relación largo : ancho", "1:1 a 3:1"],
+            ["Profundidad útil mínima", "0,35 m"],
+            ["Desengrasador aireado", "plantas con caudal ≥ 100 L/s"],
+        ],
+        "notas": "El Art. 185 exige prever la remoción de grasas en el tratamiento preliminar de sistemas centralizados.",
+    },
+
+    # ---------------- PTAR — TRATAMIENTO BIOLÓGICO ----------------
+    {
+        "categoria": "PTAR — Tratamiento Biológico",
+        "titulo": "Reactor UASB — Tiempo de Retención Hidráulica (Tabla 31)",
+        "fuente": "Resolución 0330 de 2017, Art. 191, Tabla 31",
+        "columnas": ["Temperatura del agua residual (°C)", "TRH (h)"],
+        "filas": [
+            ["16 – 19", "10 – 14"],
+            ["20 – 26", "6 – 9"],
+            ["> 26", "> 6"],
+        ],
+    },
+    {
+        "categoria": "PTAR — Tratamiento Biológico",
+        "titulo": "Reactor UASB — Velocidad Ascensional (Tabla 32) y Geometría",
+        "fuente": "Resolución 0330 de 2017, Art. 191, Tablas 32 y 33",
+        "columnas": ["Parámetro", "Valor"],
+        "filas": [
+            ["Velocidad ascensional con caudal medio", "0,5 – 0,7 m/h"],
+            ["Velocidad ascensional con caudal máximo", "0,9 – 1,1 m/h"],
+            ["Velocidad ascensional con picos temporales", "< 1,5 m/h"],
+            ["Profundidad del reactor", "4,5 – 6 m"],
+            ["Separador gas-sólido-líquido", "2,5 m de altura, placas a 45°"],
+            ["Área de influencia por distribuidor (Tabla 33)", "0,5 – 5,0 m²"],
+        ],
+    },
+    {
+        "categoria": "PTAR — Tratamiento Biológico",
+        "titulo": "Lagunas de Estabilización",
+        "fuente": "Resolución 0330 de 2017, Arts. 198, 199, 200 y 201",
+        "columnas": ["Tipo", "Profundidad", "Tiempo de retención", "Carga"],
+        "filas": [
+            ["Anaerobia (Art. 198)", "2,5 – 5 m", "1 – 3 días", "100 – 500 g DBO₅/m³·día"],
+            ["Facultativa (Art. 199)", "1,5 – 2,5 m", "5 – 30 días", "100 – 350 kg DBO₅/ha·día"],
+            ["Maduración (Art. 200)", "0,9 – 1 m", "—", "—"],
+        ],
+        "notas": "Borde libre (Art. 201): 0,3 a 0,5 m; 0,51 a 0,8 m en condiciones de alta turbulencia.",
+    },
+
+    # ---------------- PTAR — LODOS ----------------
+    {
+        "categoria": "PTAR — Manejo de Lodos",
+        "titulo": "Lechos de Secado (Tabla 44)",
+        "fuente": "Resolución 0330 de 2017, Art. 211, Tabla 44",
+        "columnas": ["Tipo de biosólido", "Área (m²/hab)", "Carga (kg SS/m²·año)"],
+        "filas": [
+            ["Primario digerido", "0,10", "120 – 150"],
+            ["Filtro percolador digerido", "0,12 – 0,16", "90 – 120"],
+            ["Lodos activados digeridos", "0,16 – 0,24", "60 – 100"],
+        ],
+        "notas": "Los valores pueden reducirse al 75% cuando los lechos de secado se cubren.",
+    },
 ]
 
 

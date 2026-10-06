@@ -40,9 +40,9 @@ class EstadoProyecto:
     # --- Caudal de diseño — PTAR ---
     # Mismos campos que el bloque de PTAP de arriba, pero independientes:
     # el caudal de diseño de una PTAR NO se calcula igual que el de una
-    # PTAP (aquí todavía no se han definido las fórmulas propias de PTAR;
-    # por ahora el módulo de cálculo es el mismo formulario, solo que
-    # guarda sus resultados en este bloque separado).
+    # PTAP. La ventana de caudal de aguas residuales (ventanas_ptar.py,
+    # Art. 134 y 166) llena ptar_caudal_ar y además los campos de aquí
+    # que aplican (nivel, dotación, Qmed, QMH y caudal de diseño).
     ptar_nivel_complejidad = None
     ptar_dotacion_neta_max = None
     ptar_coef_afectacion = None
@@ -106,6 +106,19 @@ class EstadoProyecto:
     desarenador_longitud_total = None    # m, longitud desarrollada total (todos los tramos)
     desarenador_ancho_total_estructura = None  # m, ancho de toda la estructura plegada
 
+    # --- Módulo PTAR (Planta de Tratamiento de Aguas Residuales) ---
+    # Cada estructura guarda un diccionario con lo que retorna su función
+    # en ptar_calculos.py ("valores", "filas", "verificaciones", "final",
+    # "cumple_todo") más las "entradas" que digitó el usuario. Así el
+    # informe PDF y las ventanas siguientes leen todo de un solo lugar.
+    ptar_caudal_ar = None              # Caudal de aguas residuales (Art. 134, 166)
+    ptar_rejillas = None               # Rejillas (Art. 186)
+    ptar_desarenador = None            # Desarenador (Art. 188)
+    ptar_trampa_grasas = None          # Trampa de grasas (Art. 185, 172)
+    ptar_uasb = None                   # Reactor UASB (Art. 191)
+    ptar_laguna_facultativa = None     # Laguna facultativa (Art. 199, 201)
+    ptar_lechos_secado = None          # Lechos de secado (Art. 211)
+
     @classmethod
     def esta_definido(cls):
         return cls.poblacion_diseño is not None
@@ -117,6 +130,17 @@ class EstadoProyecto:
     @classmethod
     def caudal_definido_ptar(cls):
         return cls.ptar_caudal_diseño_Ls is not None
+
+    @classmethod
+    def ptar_definido(cls, atributo):
+        """True si la estructura PTAR guardada en `atributo` ya fue calculada."""
+        return getattr(cls, atributo, None) is not None
+
+    @classmethod
+    def ptar_valores(cls, atributo):
+        """Resultados numéricos ("valores") de una estructura PTAR guardada."""
+        guardado = getattr(cls, atributo, None)
+        return guardado["valores"] if guardado else None
 
     @classmethod
     def rejilla_definida(cls):
@@ -154,6 +178,8 @@ class EstadoProyecto:
     def resumen_caudal_ptar(cls):
         if not cls.caudal_definido_ptar():
             return "Caudal de diseño (PTAR) aún no calculado."
+        if cls.ptar_caudal_ar is not None:
+            return cls.ptar_caudal_ar["final"]
         return (
             f"Nivel de complejidad: {cls.ptar_nivel_complejidad}\n"
             f"Qmd: {cls.ptar_qmd:,.2f} L/s   QMD: {cls.ptar_q_max_diario:,.2f} L/s   "
