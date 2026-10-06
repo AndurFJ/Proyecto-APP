@@ -196,3 +196,114 @@ def descripcion_parametros(params):
         ("Año antiguo, T1", f"{params['t1']}"),
         ("Población antigua, P1", f"{params['p1']:,.0f} hab"),
     ]
+
+
+# ======================================================================
+# Paso 2 — Residuos, volumen y área del relleno (método de celda diaria,
+# J. Jaramillo, "Guía para el diseño, construcción y operación de
+# rellenos sanitarios manuales", OPS/CEPIS).
+#
+# Para cada año i de la vida útil (i = 0 en el primer año):
+#
+#     PPC_i  = PPC_0 · (1 + incremento)^i              kg/hab·día
+#     DSd_i  = P_i · PPC_i                             kg/día producidos
+#     DSr_i  = DSd_i · cobertura                       kg/día recolectados
+#     DSa_i  = DSr_i · 365 / 1000                      t/año
+#     Vc_i   = DSr_i · 365 / Drsm                      m³/año compactados
+#     Vmc_i  = Vc_i · m.c.                             m³/año de cobertura
+#     Vrs_i  = Vc_i + Vmc_i                            m³/año de relleno
+#
+# Volumen total Vrs = Σ Vrs_i; área a rellenar Ars = Vrs / hrs; área
+# total At = F · Ars (F cubre vías, cerca, drenajes, retiros, etc.).
+#
+# Celda diaria (operación), con los residuos que llegan el día de trabajo:
+#
+#     DSr_lab = DSr · 7 / días laborables por semana
+#     Vcelda  = DSr_lab / Drsm · (1 + m.c.)            m³/día
+#     Acelda  = Vcelda / hc                            m²
+#     largo   = Acelda / ancho de la celda             m
+# ======================================================================
+
+PPC_DEFECTO = 0.60                # kg/hab·día
+INCREMENTO_PPC_DEFECTO = 1.0      # % anual
+COBERTURA_DEFECTO = 90.0          # % de recolección
+DENSIDAD_COMPACTADA_DEFECTO = 500.0   # kg/m³ (manual: 400-600)
+MATERIAL_COBERTURA_DEFECTO = 20.0     # % del volumen compactado (20-25 %)
+PROFUNDIDAD_DEFECTO = 6.0         # m, altura media del relleno
+FACTOR_AREA_DEFECTO = 1.3         # áreas adicionales (1.2-1.4)
+VIDA_UTIL_DEFECTO = 10            # años
+DIAS_LABORABLES_DEFECTO = 6       # días por semana
+ALTURA_CELDA_DEFECTO = 1.0        # m (manual: 1.0-1.5)
+ANCHO_CELDA_DEFECTO = 3.0         # m (frente de trabajo)
+
+
+def calcular_volumen_area(tabla, metodo, vida_util, ppc0, incremento_pct,
+                          cobertura_pct, densidad, cobertura_material_pct,
+                          profundidad, factor_area):
+    """
+    Tabla año por año de residuos y volúmenes durante la vida útil, más
+    los totales de volumen y área. `tabla` es la proyección poblacional
+    del paso 1 y `metodo` la columna adoptada.
+    """
+    if not 1 <= vida_util <= len(tabla):
+        raise ValueError(f"La vida útil debe estar entre 1 y {len(tabla)} años.")
+    for nombre, valor in [("La PPC", ppc0), ("La densidad", densidad),
+                          ("La profundidad", profundidad), ("El factor de área", factor_area)]:
+        if valor <= 0:
+            raise ValueError(f"{nombre} debe ser mayor que cero.")
+    if not 0 < cobertura_pct <= 100:
+        raise ValueError("La cobertura de recolección debe estar entre 0 y 100 %.")
+    if cobertura_material_pct < 0:
+        raise ValueError("El material de cobertura no puede ser negativo.")
+
+    mc = cobertura_material_pct / 100
+    filas = []
+    acumulado = 0.0
+    for i in range(vida_util):
+        fila_pob = tabla.iloc[i]
+        poblacion = float(fila_pob[metodo])
+        ppc = ppc0 * (1 + incremento_pct / 100) ** i
+        dsd = poblacion * ppc
+        dsr = dsd * cobertura_pct / 100
+        v_comp = dsr * 365 / densidad
+        v_mc = v_comp * mc
+        v_rs = v_comp + v_mc
+        acumulado += v_rs
+        filas.append({
+            "AÑO": int(fila_pob["AÑO"]),
+            "Población": poblacion,
+            "PPC": ppc,
+            "DSd": dsd / 1000,          # t/día producidos
+            "DSr": dsr / 1000,          # t/día recolectados
+            "DSa": dsr * 365 / 1000,    # t/año
+            "Vcompactado": v_comp,
+            "Vcobertura": v_mc,
+            "Vrelleno": v_rs,
+            "Vacumulado": acumulado,
+        })
+    df = pd.DataFrame(filas)
+    area_relleno = acumulado / profundidad
+    return df, {
+        "volumen_total": acumulado,
+        "residuos_total": float(df["DSa"].sum()),
+        "area_relleno": area_relleno,
+        "area_total": area_relleno * factor_area,
+    }
+
+
+def calcular_celda_diaria(dsr_t_dia, densidad, cobertura_material_pct,
+                          dias_laborables, altura_celda, ancho_celda):
+    """Dimensiones de la celda diaria para un caudal de residuos (t/día)."""
+    if not 1 <= dias_laborables <= 7:
+        raise ValueError("Los días laborables deben estar entre 1 y 7.")
+    if altura_celda <= 0 or ancho_celda <= 0:
+        raise ValueError("La altura y el ancho de la celda deben ser mayores que cero.")
+    dsr_lab = dsr_t_dia * 1000 * 7 / dias_laborables
+    volumen = dsr_lab / densidad * (1 + cobertura_material_pct / 100)
+    area = volumen / altura_celda
+    return {
+        "residuos_dia_laboral": float(dsr_lab / 1000),   # t/día laborable
+        "volumen": float(volumen),
+        "area": float(area),
+        "largo": float(area / ancho_celda),
+    }

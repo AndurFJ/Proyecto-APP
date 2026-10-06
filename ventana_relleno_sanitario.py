@@ -499,6 +499,8 @@ class VentanaRellenoSanitario(tk.Toplevel):
         final = self.df_proyeccion.iloc[-1]
         adoptado = self.cb_metodo_adoptado.get()
 
+        if EstadoProyecto.relleno_diseno_definido():
+            EstadoProyecto.borrar_relleno_diseno()
         EstadoProyecto.rs_departamento = self.cb_depto.get() or None
         EstadoProyecto.rs_municipio = self.cb_municipio.get() or None
         EstadoProyecto.rs_area = self.cb_area.get() or None

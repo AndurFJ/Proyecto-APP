@@ -15,7 +15,7 @@ from ventanas_ptap import ProcesosPTAP
 from ventana_datos_preliminares import VentanaDatosPreliminares
 from ventana_caudal_diseno import VentanaCaudalDiseño
 from ventana_datos_tecnicos import VentanaDatosTecnicos
-from ventana_relleno_sanitario import VentanaRellenoSanitario
+from ventanas_relleno import ProcesosRelleno
 from estado_proyecto import EstadoProyecto
 from generador_pdf import generar_informe_pdf
 from ui_utils import ajustar_geometria, hacer_scrollable
@@ -377,15 +377,19 @@ class AplicacionPrincipal(tk.Tk):
         ventana.grab_set()
 
     def abrir_relleno_sanitario(self):
-        ventana = VentanaRellenoSanitario(self, al_guardar=self._actualizar_estado_relleno)
+        ventana = ProcesosRelleno(self, al_guardar=self._actualizar_estado_relleno)
         ventana.grab_set()
 
     def _actualizar_estado_relleno(self):
-        self.lbl_estado_relleno.config(
-            text=f"✔ Relleno sanitario — Población {EstadoProyecto.rs_año_horizonte}: "
-                 f"{EstadoProyecto.rs_poblacion_diseño:,.0f} hab.",
-            fg="#82E0AA",
-        )
+        if EstadoProyecto.relleno_diseno_definido():
+            texto = (f"✔ Relleno sanitario — Volumen: {EstadoProyecto.rsd_volumen_total:,.0f} m³, "
+                     f"área: {EstadoProyecto.rsd_area_total / 10000:,.2f} ha")
+        elif EstadoProyecto.relleno_definido():
+            texto = (f"✔ Relleno sanitario — Población {EstadoProyecto.rs_año_horizonte}: "
+                     f"{EstadoProyecto.rs_poblacion_diseño:,.0f} hab.")
+        else:
+            return
+        self.lbl_estado_relleno.config(text=texto, fg="#82E0AA")
 
     def abrir_ptar(self):
         messagebox.showinfo(

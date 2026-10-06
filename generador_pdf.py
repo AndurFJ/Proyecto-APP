@@ -381,6 +381,79 @@ def _seccion_relleno_sanitario(story, estilos):
     story.append(PageBreak())
 
 
+def _seccion_relleno_diseno(story, estilos):
+    story.append(Paragraph("6. Relleno Sanitario — Residuos, volumen, área y celda diaria",
+                           estilos["seccion"]))
+    story.append(Paragraph(
+        "Método de celda diaria (J. Jaramillo, OPS/CEPIS). Población del Paso 1 con el método "
+        f"{EstadoProyecto.rs_metodo_adoptado}.", estilos["nota"],
+    ))
+    story.append(Spacer(1, 6))
+
+    e = EstadoProyecto.rsd_entradas
+    pares = [
+        ("Vida útil (años)", f"{e['vida_util']}"),
+        ("PPC inicial (kg/hab·día)", f"{e['ppc']:g}"),
+        ("Incremento anual de la PPC (%)", f"{e['incremento']:g}"),
+        ("Cobertura de recolección (%)", f"{e['cobertura']:g}"),
+        ("Densidad de residuos compactados (kg/m³)", f"{e['densidad']:g}"),
+        ("Material de cobertura (% del volumen)", f"{e['material']:g}"),
+        ("Profundidad media del relleno (m)", f"{e['profundidad']:g}"),
+        ("Factor de área adicional, F", f"{e['factor']:g}"),
+        ("Residuos dispuestos en la vida útil (t)", f"{EstadoProyecto.rsd_residuos_total:,.0f}"),
+        ("Área a rellenar (m²)", f"{EstadoProyecto.rsd_area_relleno:,.0f}"),
+    ]
+    story.append(_tabla_datos(pares, estilos))
+    story.append(Spacer(1, 12))
+    story.append(_marco_resultado_final(
+        f"VOLUMEN TOTAL: {EstadoProyecto.rsd_volumen_total:,.0f} m³<br/>"
+        f"ÁREA TOTAL REQUERIDA: {EstadoProyecto.rsd_area_total:,.0f} m² "
+        f"({EstadoProyecto.rsd_area_total / 10000:,.2f} ha)",
+        estilos,
+    ))
+    story.append(Spacer(1, 10))
+
+    story.append(Paragraph("Celda diaria de operación", estilos["subseccion"]))
+    tabla_df = EstadoProyecto.rsd_tabla
+    pares_celda = [
+        ("Días laborables por semana", f"{e['dias']}"),
+        ("Altura × ancho de la celda (m)", f"{e['altura_celda']:g} × {e['ancho_celda']:g}"),
+    ]
+    for nombre, fila, celda in [("Primer año", tabla_df.iloc[0], EstadoProyecto.rsd_celda_inicial),
+                                ("Último año", tabla_df.iloc[-1], EstadoProyecto.rsd_celda_final)]:
+        pares_celda.append((
+            f"{nombre} ({int(fila['AÑO'])})",
+            f"{celda['residuos_dia_laboral']:,.2f} t/día laborable — volumen {celda['volumen']:,.1f} m³, "
+            f"área {celda['area']:,.1f} m², largo {celda['largo']:,.1f} m",
+        ))
+    story.append(_tabla_datos(pares_celda, estilos, ancho_izq=5 * cm, ancho_der=11 * cm))
+    story.append(Spacer(1, 10))
+
+    story.append(Paragraph("Residuos y volúmenes año por año", estilos["subseccion"]))
+    filas = [["Año", "Población", "PPC\n(kg/hab·d)", "Residuos\n(t/año)",
+              "V. compact.\n(m³)", "V. cobert.\n(m³)", "V. relleno\n(m³)", "V. acum.\n(m³)"]]
+    for _, f in tabla_df.iterrows():
+        filas.append([
+            str(int(f["AÑO"])), f"{f['Población']:,.0f}", f"{f['PPC']:.3f}", f"{f['DSa']:,.0f}",
+            f"{f['Vcompactado']:,.0f}", f"{f['Vcobertura']:,.0f}", f"{f['Vrelleno']:,.0f}",
+            f"{f['Vacumulado']:,.0f}",
+        ])
+    tabla = Table(filas, colWidths=[1.6 * cm] + [2.05 * cm] * 7, repeatRows=1)
+    tabla.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, 0), AZUL),
+        ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+        ("FONTNAME", (0, 0), (-1, 0), FUENTE_NEGRITA),
+        ("FONTNAME", (0, 1), (-1, -1), FUENTE_NORMAL),
+        ("FONTSIZE", (0, 0), (-1, -1), 7.5),
+        ("ALIGN", (0, 0), (-1, -1), "CENTER"),
+        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+        ("GRID", (0, 0), (-1, -1), 0.4, BORDE_TABLA),
+        ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, colors.HexColor("#F8F9F9")]),
+    ]))
+    story.append(tabla)
+    story.append(PageBreak())
+
+
 # ----------------------------------------------------------------------
 # Mapa: (¿está definida esta sección?) -> función que la escribe.
 # Para agregar un proceso nuevo, solo se añade una tupla aquí.
@@ -390,6 +463,7 @@ SECCIONES = [
     (lambda: EstadoProyecto.rejilla_definida(), _seccion_bocatoma_rejilla),
     (lambda: EstadoProyecto.desarenador_definido(), _seccion_desarenador),
     (lambda: EstadoProyecto.relleno_definido(), _seccion_relleno_sanitario),
+    (lambda: EstadoProyecto.relleno_diseno_definido(), _seccion_relleno_diseno),
 ]
 
 
