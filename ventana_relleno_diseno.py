@@ -3,8 +3,8 @@ Ventana del Paso 2 del relleno sanitario: residuos, volumen, área y
 celda diaria de operación (ver relleno_sanitario.py para las fórmulas).
 
 Parte de la proyección poblacional guardada en el Paso 1 (campos rs_*
-de EstadoProyecto) y guarda sus resultados en los campos rsd_*. Usa los
-mismos COLORES y FUENTES que la ventana del Paso 1.
+de EstadoProyecto) y guarda sus resultados en los campos rsd_*. Los
+colores y fuentes salen del tema del software (tema.py).
 """
 
 import tkinter as tk
@@ -12,8 +12,9 @@ from tkinter import ttk, messagebox
 
 import relleno_sanitario as rs
 from estado_proyecto import EstadoProyecto
-from ui_utils import ajustar_geometria, hacer_scrollable
-from ventana_relleno_sanitario import COLORES, FUENTES
+import tema
+from tema import C, fuente
+from ui_utils import ajustar_geometria
 
 
 # (atributo, etiqueta, valor por defecto, nota)
@@ -54,14 +55,17 @@ LEYENDA_TABLA = (
     "V. relleno y V. acum.: volumen del año y acumulado (todos los volúmenes en m³)"
 )
 
+# Ancho (px) del panel de datos de entrada y de sus textos
+ANCHO_PANEL = 430
+ANCHO_TEXTO = 360
+
 
 class VentanaDisenoRelleno(tk.Toplevel):
     def __init__(self, master, al_guardar=None):
         super().__init__(master)
         self.title("Relleno Sanitario — Residuos, volumen y área")
-        self.resizable(True, True)
-        ajustar_geometria(self, ancho=1180, alto=780)
-        self.configure(bg=COLORES["fondo"])
+        ajustar_geometria(self)
+        self.configure(bg=C.FONDO)
 
         self.al_guardar = al_guardar
         self.entradas = {}
@@ -72,74 +76,69 @@ class VentanaDisenoRelleno(tk.Toplevel):
 
     # ------------------------------------------------------------------
     def _crear_widgets(self):
-        tk.Label(
-            self, text="RELLENO SANITARIO — Residuos, volumen, área y celda diaria",
-            font=FUENTES["titulo"], bg=COLORES["encabezado"],
-            fg=COLORES["encabezado_texto"], pady=10,
-        ).pack(fill="x")
-        tk.Label(
-            self, text=f"Población del Paso 1: {EstadoProyecto.rs_metodo_adoptado}, "
-                       f"desde {EstadoProyecto.rs_año_inicio} — Método de celda diaria",
-            font=FUENTES["subtitulo"], bg=COLORES["encabezado"],
-            fg=COLORES["encabezado_sub"], pady=4,
-        ).pack(fill="x")
+        tema.encabezado(
+            self, "RELLENO SANITARIO — Residuos, volumen, área y celda diaria",
+            f"Población del Paso 1: {EstadoProyecto.rs_metodo_adoptado}, "
+            f"desde {EstadoProyecto.rs_año_inicio} — Método de celda diaria",
+        )
 
-        cuerpo = tk.Frame(self, bg=COLORES["fondo"])
-        cuerpo.pack(fill="both", expand=True, padx=15, pady=10)
+        cuerpo = tk.Frame(self, bg=C.FONDO)
+        cuerpo.pack(fill="both", expand=True, padx=32, pady=24)
 
-        izq = tk.Frame(cuerpo, bg=COLORES["fondo"], width=340)
-        izq.pack(side="left", fill="y", padx=(0, 15))
+        izq = tema.tarjeta(cuerpo)
+        izq.configure(width=ANCHO_PANEL)
+        izq.pack(side="left", fill="y", padx=(0, 24))
         izq.pack_propagate(False)
-        canvas = tk.Canvas(izq, bg=COLORES["fondo"], highlightthickness=0)
-        barra = ttk.Scrollbar(izq, orient="vertical", command=canvas.yview)
-        canvas.configure(yscrollcommand=barra.set)
-        canvas.pack(side="left", fill="both", expand=True)
-        barra.pack(side="right", fill="y")
-        panel = tk.Frame(canvas, bg=COLORES["fondo"])
-        hacer_scrollable(canvas, panel)
+        marco = tema.area_desplazable(izq, bg=C.SUPERFICIE)
+        panel = tk.Frame(marco, bg=C.SUPERFICIE)
+        panel.pack(fill="both", expand=True, padx=(22, 14), pady=(6, 10))
 
-        der = tk.Frame(cuerpo, bg=COLORES["panel"], bd=1, relief="solid")
+        der = tema.tarjeta(cuerpo)
         der.pack(side="right", fill="both", expand=True)
 
         self._crear_panel_entradas(panel)
         self._crear_panel_resultados(der)
 
     def _crear_panel_entradas(self, padre):
+        tk.Label(padre, text="DATOS DE DISEÑO", font=fuente(9, "bold"), bg=C.SUPERFICIE,
+                 fg=C.TEXTO_TENUE, anchor="w").pack(fill="x", pady=(10, 0))
         for attr, etiqueta, defecto, nota in ENTRADAS:
-            tk.Label(padre, text=f"✎ {etiqueta}:", font=FUENTES["seccion"],
-                     bg=COLORES["fondo"], fg=COLORES["editable"], anchor="w",
-                     justify="left", wraplength=300).pack(fill="x", pady=(8, 2), padx=(0, 8))
-            entry = ttk.Entry(padre)
+            tk.Label(padre, text=f"✎ {etiqueta}:", font=fuente(10, "bold"),
+                     bg=C.SUPERFICIE, fg=C.EDITABLE_TEXTO, anchor="w",
+                     justify="left", wraplength=ANCHO_TEXTO).pack(fill="x", pady=(10, 3))
+            entry = ttk.Entry(padre, style="Editable.TEntry")
             entry.insert(0, f"{defecto:g}")
-            entry.pack(fill="x", padx=(0, 8))
+            entry.pack(fill="x")
             if nota:
-                tk.Label(padre, text=nota, font=FUENTES["nota"], bg=COLORES["fondo"],
-                         fg=COLORES["texto_suave"], anchor="w", justify="left",
-                         wraplength=300).pack(fill="x", padx=(0, 8))
+                tk.Label(padre, text=nota, font=fuente(8, "italic"), bg=C.SUPERFICIE,
+                         fg=C.TEXTO_TENUE, anchor="w", justify="left",
+                         wraplength=ANCHO_TEXTO).pack(fill="x", pady=(2, 0))
             self.entradas[attr] = entry
 
-        for texto, color, comando in [("Calcular", COLORES["boton_calcular"], self.calcular),
-                                      ("Guardar y continuar", COLORES["boton_guardar"], self.guardar)]:
-            tk.Button(padre, text=texto, font=FUENTES["boton"], bg=color, fg="white",
-                      activebackground=color, bd=0, cursor="hand2", command=comando,
-                      ).pack(fill="x", pady=(14, 0), padx=(0, 8), ipady=6)
-        tk.Frame(padre, bg=COLORES["fondo"], height=14).pack()
+        for texto, color, comando, tam in [
+                ("Calcular", C.PRIMARIO, self.calcular, 11),
+                ("💾 Guardar y continuar", C.EXITO_BOTON, self.guardar, 12)]:
+            tk.Button(padre, text=texto, font=fuente(tam, "bold"), bg=color, fg="white",
+                      activebackground=color, activeforeground="white", bd=0,
+                      cursor="hand2", command=comando,
+                      ).pack(fill="x", pady=(16, 0), ipady=7)
+        tk.Frame(padre, bg=C.SUPERFICIE, height=16).pack()
 
     def _crear_panel_resultados(self, padre):
-        marco = tk.Frame(padre, bg=COLORES["ok_fondo"],
-                         highlightbackground=COLORES["ok_texto"], highlightthickness=2)
-        marco.pack(fill="x", padx=10, pady=(10, 6))
+        marco = tk.Frame(padre, bg=C.EXITO_FONDO, highlightbackground=C.EXITO,
+                         highlightcolor=C.EXITO, highlightthickness=1, bd=0)
+        marco.pack(fill="x", padx=20, pady=(20, 12))
         self.lbl_totales = tk.Label(
             marco, text="Calcule para ver el volumen y el área del relleno.",
-            font=FUENTES["resultado"], bg=COLORES["ok_fondo"], fg=COLORES["ok_texto"],
-            justify="center", pady=8,
+            font=fuente(12, "bold"), bg=C.EXITO_FONDO, fg=C.EXITO,
+            justify="center", pady=12,
         )
-        self.lbl_totales.pack(fill="x")
+        self.lbl_totales.pack(fill="x", padx=10)
 
-        tk.Label(padre, text="Residuos y volúmenes año por año", font=FUENTES["seccion"],
-                 bg=COLORES["panel"], fg=COLORES["texto"], anchor="w").pack(fill="x", padx=10)
-        marco_tabla = tk.Frame(padre, bg=COLORES["panel"])
-        marco_tabla.pack(fill="both", expand=True, padx=10, pady=(2, 6))
+        tk.Label(padre, text="RESIDUOS Y VOLÚMENES AÑO POR AÑO", font=fuente(9, "bold"),
+                 bg=C.SUPERFICIE, fg=C.TEXTO_TENUE, anchor="w").pack(fill="x", padx=20, pady=(6, 4))
+        marco_tabla = tk.Frame(padre, bg=C.SUPERFICIE)
+        marco_tabla.pack(fill="both", expand=True, padx=20, pady=(2, 6))
         barra = ttk.Scrollbar(marco_tabla, orient="vertical")
         self.tabla = ttk.Treeview(marco_tabla, columns=[c[0] for c in COLUMNAS_TABLA],
                                   show="headings", height=10, yscrollcommand=barra.set)
@@ -149,17 +148,20 @@ class VentanaDisenoRelleno(tk.Toplevel):
             self.tabla.column(clave, width=ancho, minwidth=ancho, anchor="center")
         self.tabla.pack(side="left", fill="both", expand=True)
         barra.pack(side="right", fill="y")
-        tk.Label(padre, text=LEYENDA_TABLA, font=FUENTES["nota"], bg=COLORES["panel"],
-                 fg=COLORES["texto_suave"], anchor="w", justify="left",
-                 wraplength=760).pack(fill="x", padx=10, pady=(0, 6))
+        leyenda = tk.Label(padre, text=LEYENDA_TABLA, font=fuente(8, "italic"), bg=C.SUPERFICIE,
+                           fg=C.TEXTO_TENUE, anchor="w", justify="left", wraplength=760)
+        leyenda.pack(fill="x", padx=20, pady=(0, 8))
+        tema.ajustar_al_ancho(leyenda, margen=40)
 
-        tk.Label(padre, text="Celda diaria de operación", font=FUENTES["seccion"],
-                 bg=COLORES["panel"], fg=COLORES["texto"], anchor="w").pack(fill="x", padx=10)
+        tk.Label(padre, text="CELDA DIARIA DE OPERACIÓN", font=fuente(9, "bold"),
+                 bg=C.SUPERFICIE, fg=C.TEXTO_TENUE, anchor="w").pack(fill="x", padx=20, pady=(6, 4))
         self.lbl_celda = tk.Label(
-            padre, text="—", font=FUENTES["normal"], bg=COLORES["panel"],
-            fg=COLORES["resultado"], anchor="w", justify="left",
+            padre, text="—", font=fuente(10), bg=C.RESULTADO_FONDO,
+            fg=C.RESULTADO_TEXTO, anchor="w", justify="left", relief="flat", bd=0,
+            highlightthickness=1, highlightbackground=C.BORDE, padx=8, pady=6,
         )
-        self.lbl_celda.pack(fill="x", padx=10, pady=(2, 12))
+        self.lbl_celda.pack(fill="x", padx=20, pady=(2, 20))
+        tema.ajustar_al_ancho(self.lbl_celda, margen=60)
 
     # ------------------------------------------------------------------
     def _leer(self):
