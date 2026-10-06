@@ -12,6 +12,7 @@ from tkinter import messagebox
 from estado_proyecto import EstadoProyecto
 from ventana_bocatoma_rejilla import VentanaBocatomaRejilla
 from ventana_desarenador import VentanaDesarenador
+from ventana_aduccion_conduccion import VentanaAduccionConduccion
 from ventana_datos_tecnicos import VentanaDatosTecnicos
 import tema
 from tema import C, fuente
@@ -21,6 +22,7 @@ from ui_utils import ajustar_geometria
 PROCESOS_PTAP = [
     "Captación (bocatoma con rejilla)",
     "Desarenador",
+    "Aducción / conducción",
     "Mezcla rápida / coagulación",
     "Floculación",
     "Sedimentación",
@@ -108,6 +110,13 @@ class ProcesosPTAP(tk.Toplevel):
                 bg=C.EXITO_FONDO, fg=C.EXITO, highlightbackground=C.EXITO,
             )
 
+        btn_aduccion = self.botones.get("Aducción / conducción")
+        if btn_aduccion and EstadoProyecto.aduccion_definida():
+            btn_aduccion.config(
+                text="✔     Aducción / conducción",
+                bg=C.EXITO_FONDO, fg=C.EXITO, highlightbackground=C.EXITO,
+            )
+
     def abrir_proceso(self, nombre_proceso):
         if nombre_proceso == "Captación (bocatoma con rejilla)":
             self.abrir_bocatoma_rejilla()
@@ -115,6 +124,10 @@ class ProcesosPTAP(tk.Toplevel):
 
         if nombre_proceso == "Desarenador":
             self.abrir_desarenador()
+            return
+
+        if nombre_proceso == "Aducción / conducción":
+            self.abrir_aduccion_conduccion()
             return
 
         messagebox.showinfo(
@@ -146,6 +159,18 @@ class ProcesosPTAP(tk.Toplevel):
             return
 
         ventana = VentanaDesarenador(self, al_guardar=self._actualizar_estado_botones)
+        ventana.grab_set()
+
+    def abrir_aduccion_conduccion(self):
+        if not EstadoProyecto.caudal_definido():
+            messagebox.showwarning(
+                "Falta el caudal de diseño",
+                "Primero debe calcular el Caudal de Diseño antes de "
+                "diseñar la aducción / conducción.",
+            )
+            return
+
+        ventana = VentanaAduccionConduccion(self, al_guardar=self._actualizar_estado_botones)
         ventana.grab_set()
 
     def abrir_datos_tecnicos(self):

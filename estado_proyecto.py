@@ -106,6 +106,21 @@ class EstadoProyecto:
     desarenador_longitud_total = None    # m, longitud desarrollada total (todos los tramos)
     desarenador_ancho_total_estructura = None  # m, ancho de toda la estructura plegada
 
+    # --- Aducción / Conducción (Paso 5 - PTAP) ---
+    aduccion_tipo_sistema = None           # "Por gravedad" | "Por bombeo"
+    aduccion_material = None               # material de la tubería
+    aduccion_c_hazen_williams = None       # coeficiente C de Hazen-Williams
+    aduccion_longitud = None               # m
+    aduccion_diametro_mm = None            # mm, diámetro comercial adoptado
+    aduccion_area = None                   # m²
+    aduccion_velocidad = None              # m/s
+    aduccion_v_min = None                  # m/s (Art. 56, 0.5 m/s)
+    aduccion_v_max = None                  # m/s, según el material
+    aduccion_perdida_carga = None          # m (Hazen-Williams)
+    aduccion_factor_seguridad_ariete = None  # 1.1 gravedad | 1.3 bombeo
+    aduccion_desnivel_disponible = None    # m (opcional)
+    aduccion_presion_residual = None       # m (None si no hay desnivel)
+
     @classmethod
     def esta_definido(cls):
         return cls.poblacion_diseño is not None
@@ -125,6 +140,10 @@ class EstadoProyecto:
     @classmethod
     def desarenador_definido(cls):
         return cls.desarenador_longitud is not None
+
+    @classmethod
+    def aduccion_definida(cls):
+        return cls.aduccion_diametro_mm is not None
 
     @classmethod
     def resumen(cls):
@@ -192,4 +211,23 @@ class EstadoProyecto:
             f"{cls.desarenador_ancho:,.2f} × {cls.desarenador_profundidad:,.2f} m{texto_tramos}\n"
             f"Vs: {cls.desarenador_vs:,.5f} m/s   Vh: {cls.desarenador_vh:,.3f} m/s   "
             f"Tiempo de retención: {cls.desarenador_t_retencion_min:,.1f} min"
+        )
+
+    @classmethod
+    def resumen_aduccion(cls):
+        if not cls.aduccion_definida():
+            return "Aducción / conducción aún no calculada."
+        texto_presion = (
+            f"\nCabeza residual disponible: {cls.aduccion_presion_residual:,.3f} m"
+            if cls.aduccion_presion_residual is not None
+            else ""
+        )
+        return (
+            f"{cls.aduccion_tipo_sistema} — {cls.aduccion_material} "
+            f"(C = {cls.aduccion_c_hazen_williams:,.0f})\n"
+            f"Diámetro: {cls.aduccion_diametro_mm:,.0f} mm   "
+            f"Longitud: {cls.aduccion_longitud:,.1f} m\n"
+            f"Velocidad: {cls.aduccion_velocidad:,.3f} m/s   "
+            f"Pérdida de carga: {cls.aduccion_perdida_carga:,.3f} m"
+            f"{texto_presion}"
         )

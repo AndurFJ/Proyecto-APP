@@ -1,7 +1,7 @@
 """
 Ventana de Aducción / Conducción.
 
-Segundo proceso de diseño de la PTAP: a partir del caudal de diseño
+Proceso de diseño de la PTAP (después del desarenador): a partir del caudal de diseño
 (Paso 2) y de un diámetro comercial elegido por el usuario, calcula
 el área, la velocidad resultante y la pérdida de carga (fórmula de
 Hazen-Williams) de la línea de aducción o conducción — siguiendo los
