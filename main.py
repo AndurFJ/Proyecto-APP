@@ -12,6 +12,7 @@ import tkinter as tk
 from tkinter import ttk, messagebox, filedialog
 
 from ventanas_ptap import ProcesosPTAP
+from ventanas_ptar import ProcesosPTAR, VentanaCaudalPTAR
 from ventana_datos_preliminares import VentanaDatosPreliminares
 from ventana_caudal_diseno import VentanaCaudalDiseño
 from ventana_datos_tecnicos import VentanaDatosTecnicos
@@ -334,9 +335,7 @@ class AplicacionPrincipal(tk.Tk):
                 self.abrir_datos_preliminares()
             return
 
-        ventana = VentanaCaudalDiseño(
-            self, tipo="PTAR", al_guardar=self._actualizar_estado_caudal_ptar
-        )
+        ventana = VentanaCaudalPTAR(self, al_guardar=self._actualizar_estado_caudal_ptar)
         ventana.grab_set()
 
     def _actualizar_estado_caudal_ptar(self):
@@ -385,11 +384,18 @@ class AplicacionPrincipal(tk.Tk):
         self.lbl_estado_relleno.config(text=texto, fg=C.EXITO, bg=C.EXITO_FONDO)
 
     def abrir_ptar(self):
-        messagebox.showinfo(
-            "PTAR",
-            "El módulo de PTAR todavía no está implementado.\n"
-            "Vamos a construirlo después de terminar PTAP.",
-        )
+        if not EstadoProyecto.esta_definido():
+            respuesta = messagebox.askyesno(
+                "Datos preliminares requeridos",
+                "Aún no ha definido los Datos Preliminares (proyección poblacional).\n\n"
+                "¿Desea definirlos ahora?",
+            )
+            if respuesta:
+                self.abrir_datos_preliminares()
+            return
+
+        ventana = ProcesosPTAR(self, al_guardar_caudal=self._actualizar_estado_caudal_ptar)
+        ventana.grab_set()
 
 
 if __name__ == "__main__":
