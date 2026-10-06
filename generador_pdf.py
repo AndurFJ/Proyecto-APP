@@ -31,6 +31,7 @@ from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 
 from estado_proyecto import EstadoProyecto
+import relleno_sanitario as rs
 
 # ----------------------------------------------------------------------
 # Fuente Unicode (Helvetica NO incluye ², ³, Δ, etc. y los deja en blanco).
@@ -302,6 +303,85 @@ def _seccion_desarenador(story, estilos):
 
 
 # ----------------------------------------------------------------------
+def _grafica_relleno_png():
+    """PNG temporal con la proyección poblacional del relleno sanitario."""
+    df = EstadoProyecto.rs_tabla_proyeccion
+    fig = Figure(figsize=(6.6, 3.6), dpi=150)
+    ax = fig.add_subplot(111)
+    for col, marcador, linea in zip(rs.COLUMNAS_PROYECCION, ["o", "s", "^"], ["-", "-", "--"]):
+        ax.plot(df["AÑO"], df[col], marker=marcador, markersize=2, linestyle=linea, label=col)
+    ax.set_xlabel("Año")
+    ax.set_ylabel("Población proyectada (hab)")
+    ax.set_title("Proyección poblacional — comparación de métodos")
+    ax.legend(fontsize=8)
+    ax.grid(True, linestyle="--", alpha=0.4)
+    fig.tight_layout()
+
+    ruta = os.path.join(tempfile.gettempdir(), "grafica_proyeccion_relleno_sanitario.png")
+    fig.savefig(ruta, dpi=150)
+    return ruta
+
+
+def _seccion_relleno_sanitario(story, estilos):
+    story.append(Paragraph("5. Relleno Sanitario — Cálculo poblacional", estilos["seccion"]))
+    params = EstadoProyecto.rs_parametros
+
+    pares = [
+        ("Método de cálculo", f"{params['metodo']} · {rs.NOMBRES_METODO[params['metodo']]}"),
+        ("Departamento", EstadoProyecto.rs_departamento or "—"),
+        ("Municipio", EstadoProyecto.rs_municipio or "—"),
+        ("Área geográfica", EstadoProyecto.rs_area or "—"),
+    ]
+    if EstadoProyecto.rs_datos_censales:
+        pares.append((
+            "Datos censales ingresados",
+            ", ".join(f"{año}: {pob:,.0f}" for año, pob in sorted(EstadoProyecto.rs_datos_censales)),
+        ))
+    pares += rs.descripcion_parametros(params)
+    pares += [
+        ("Periodo de proyección",
+         f"{EstadoProyecto.rs_año_inicio} a {EstadoProyecto.rs_año_horizonte} "
+         f"({rs.AÑOS_PROYECCION} años)"),
+        ("Método adoptado", EstadoProyecto.rs_metodo_adoptado),
+    ]
+    story.append(_tabla_datos(pares, estilos))
+    story.append(Spacer(1, 12))
+
+    story.append(_marco_resultado_final(
+        f"POBLACIÓN EN {EstadoProyecto.rs_año_horizonte}: "
+        f"{EstadoProyecto.rs_poblacion_diseño:,.0f} hab ({EstadoProyecto.rs_metodo_adoptado})",
+        estilos,
+    ))
+    story.append(Spacer(1, 12))
+
+    try:
+        ruta_grafica = _grafica_relleno_png()
+        story.append(Image(ruta_grafica, width=16 * cm, height=16 * cm * 3.6 / 6.6))
+        story.append(Spacer(1, 10))
+    except Exception:
+        pass
+
+    story.append(Paragraph("Proyección poblacional completa", estilos["subseccion"]))
+    df = EstadoProyecto.rs_tabla_proyeccion
+    filas = [["Año"] + rs.COLUMNAS_PROYECCION]
+    for _, fila in df.iterrows():
+        filas.append([str(int(fila["AÑO"]))] + [f"{fila[c]:,.0f}" for c in rs.COLUMNAS_PROYECCION])
+    tabla = Table(filas, colWidths=[3 * cm, 4.33 * cm, 4.33 * cm, 4.33 * cm], repeatRows=1)
+    tabla.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, 0), AZUL),
+        ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+        ("FONTNAME", (0, 0), (-1, 0), FUENTE_NEGRITA),
+        ("FONTNAME", (0, 1), (-1, -1), FUENTE_NORMAL),
+        ("FONTSIZE", (0, 0), (-1, -1), 8),
+        ("ALIGN", (0, 0), (-1, -1), "CENTER"),
+        ("GRID", (0, 0), (-1, -1), 0.4, BORDE_TABLA),
+        ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, colors.HexColor("#F8F9F9")]),
+    ]))
+    story.append(tabla)
+    story.append(PageBreak())
+
+
+# ----------------------------------------------------------------------
 # Mapa: (¿está definida esta sección?) -> función que la escribe.
 # Para agregar un proceso nuevo, solo se añade una tupla aquí.
 SECCIONES = [
@@ -309,6 +389,7 @@ SECCIONES = [
     (lambda: EstadoProyecto.caudal_definido(), _seccion_caudal_diseno),
     (lambda: EstadoProyecto.rejilla_definida(), _seccion_bocatoma_rejilla),
     (lambda: EstadoProyecto.desarenador_definido(), _seccion_desarenador),
+    (lambda: EstadoProyecto.relleno_definido(), _seccion_relleno_sanitario),
 ]
 
 
@@ -317,10 +398,10 @@ def generar_informe_pdf(ruta_salida):
     Genera el informe PDF con todos los resultados guardados hasta el
     momento en EstadoProyecto. Retorna la ruta del archivo generado.
     """
-    if not EstadoProyecto.esta_definido():
+    if not (EstadoProyecto.esta_definido() or EstadoProyecto.relleno_definido()):
         raise ValueError(
             "No hay datos preliminares definidos todavía. "
-            "Complete al menos el Paso ① antes de exportar el informe."
+            "Complete al menos el Paso ① (o el Relleno Sanitario) antes de exportar el informe."
         )
 
     doc = SimpleDocTemplate(

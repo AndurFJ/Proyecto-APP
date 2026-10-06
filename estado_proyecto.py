@@ -106,6 +106,20 @@ class EstadoProyecto:
     desarenador_longitud_total = None    # m, longitud desarrollada total (todos los tramos)
     desarenador_ancho_total_estructura = None  # m, ancho de toda la estructura plegada
 
+    # --- Relleno sanitario (DORS): cálculo poblacional ---
+    # Independiente de los Datos Preliminares de PTAP/PTAR (ver
+    # relleno_sanitario.py para las fórmulas).
+    rs_departamento = None
+    rs_municipio = None
+    rs_area = None
+    rs_parametros = None          # dict: metodo (1|2|3) + tu,t1,pu,p1 ó t0,p0,r
+    rs_año_inicio = None          # primer año de la proyección
+    rs_datos_censales = None      # [(año, población), ...] (solo método 2)
+    rs_tabla_proyeccion = None    # DataFrame (AÑO, Aritmético, Geométrico, Exponencial), 50 años
+    rs_metodo_adoptado = None     # "Aritmético" | "Geométrico" | "Exponencial"
+    rs_año_horizonte = None       # último año de la proyección
+    rs_poblacion_diseño = None    # hab, en rs_año_horizonte con el método adoptado
+
     @classmethod
     def esta_definido(cls):
         return cls.poblacion_diseño is not None
@@ -125,6 +139,10 @@ class EstadoProyecto:
     @classmethod
     def desarenador_definido(cls):
         return cls.desarenador_longitud is not None
+
+    @classmethod
+    def relleno_definido(cls):
+        return cls.rs_tabla_proyeccion is not None
 
     @classmethod
     def resumen(cls):
@@ -192,4 +210,19 @@ class EstadoProyecto:
             f"{cls.desarenador_ancho:,.2f} × {cls.desarenador_profundidad:,.2f} m{texto_tramos}\n"
             f"Vs: {cls.desarenador_vs:,.5f} m/s   Vh: {cls.desarenador_vh:,.3f} m/s   "
             f"Tiempo de retención: {cls.desarenador_t_retencion_min:,.1f} min"
+        )
+
+    @classmethod
+    def resumen_relleno(cls):
+        if not cls.relleno_definido():
+            return "Cálculo poblacional del relleno sanitario aún no realizado."
+        ubicacion = (
+            f"{cls.rs_municipio} ({cls.rs_departamento}) — Área: {cls.rs_area}\n"
+            if cls.rs_municipio else ""
+        )
+        return (
+            f"{ubicacion}"
+            f"Proyección: {cls.rs_año_inicio} a {cls.rs_año_horizonte}\n"
+            f"Método adoptado: {cls.rs_metodo_adoptado}\n"
+            f"Población en {cls.rs_año_horizonte}: {cls.rs_poblacion_diseño:,.0f} hab."
         )

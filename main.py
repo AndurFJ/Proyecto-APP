@@ -15,6 +15,7 @@ from ventanas_ptap import ProcesosPTAP
 from ventana_datos_preliminares import VentanaDatosPreliminares
 from ventana_caudal_diseno import VentanaCaudalDiseño
 from ventana_datos_tecnicos import VentanaDatosTecnicos
+from ventana_relleno_sanitario import VentanaRellenoSanitario
 from estado_proyecto import EstadoProyecto
 from generador_pdf import generar_informe_pdf
 from ui_utils import ajustar_geometria, hacer_scrollable
@@ -192,6 +193,27 @@ class AplicacionPrincipal(tk.Tk):
         )
         btn_ptar.grid(row=0, column=1, padx=15, pady=10)
 
+        btn_relleno = tk.Button(
+            cuerpo,
+            text="Relleno Sanitario (DORS)",
+            font=("Arial", 14, "bold"),
+            bg="#A04000",
+            fg="white",
+            activebackground="#6E2C00",
+            width=24,
+            height=2,
+            bd=0,
+            cursor="hand2",
+            command=self.abrir_relleno_sanitario,
+        )
+        btn_relleno.pack(pady=(8, 5))
+
+        self.lbl_estado_relleno = tk.Label(
+            cuerpo, text="⚠ Cálculo poblacional del relleno aún no realizado",
+            font=("Arial", 9), fg="#F5B041", bg="#1F4E78",
+        )
+        self.lbl_estado_relleno.pack(pady=(0, 8))
+
         btn_salir = tk.Button(
             cuerpo,
             text="Salir",
@@ -234,7 +256,7 @@ class AplicacionPrincipal(tk.Tk):
         ventana.grab_set()
 
     def exportar_informe(self):
-        if not EstadoProyecto.esta_definido():
+        if not (EstadoProyecto.esta_definido() or EstadoProyecto.relleno_definido()):
             respuesta = messagebox.askyesno(
                 "Datos preliminares requeridos",
                 "Aún no hay nada calculado. Para exportar el informe, primero "
@@ -249,7 +271,7 @@ class AplicacionPrincipal(tk.Tk):
             title="Guardar informe como PDF",
             defaultextension=".pdf",
             filetypes=[("Documento PDF", "*.pdf")],
-            initialfile=f"Informe_PTAP_{EstadoProyecto.municipio or 'proyecto'}.pdf",
+            initialfile=f"Informe_PTAP_{EstadoProyecto.municipio or EstadoProyecto.rs_municipio or 'proyecto'}.pdf",
         )
         if not ruta:
             return
@@ -353,6 +375,17 @@ class AplicacionPrincipal(tk.Tk):
 
         ventana = ProcesosPTAP(self)
         ventana.grab_set()
+
+    def abrir_relleno_sanitario(self):
+        ventana = VentanaRellenoSanitario(self, al_guardar=self._actualizar_estado_relleno)
+        ventana.grab_set()
+
+    def _actualizar_estado_relleno(self):
+        self.lbl_estado_relleno.config(
+            text=f"✔ Relleno sanitario — Población {EstadoProyecto.rs_año_horizonte}: "
+                 f"{EstadoProyecto.rs_poblacion_diseño:,.0f} hab.",
+            fg="#82E0AA",
+        )
 
     def abrir_ptar(self):
         messagebox.showinfo(
