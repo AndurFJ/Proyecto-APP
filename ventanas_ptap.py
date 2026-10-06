@@ -13,6 +13,8 @@ from estado_proyecto import EstadoProyecto
 from ventana_bocatoma_rejilla import VentanaBocatomaRejilla
 from ventana_desarenador import VentanaDesarenador
 from ventana_datos_tecnicos import VentanaDatosTecnicos
+import tema
+from tema import C, fuente
 from ui_utils import ajustar_geometria
 
 
@@ -34,49 +36,60 @@ class ProcesosPTAP(tk.Toplevel):
     def __init__(self, master):
         super().__init__(master)
         self.title("PTAP — Procesos de diseño")
-        self.resizable(False, True)
-        ajustar_geometria(self, ancho=420, alto=570, alto_minimo=400)
-        self.configure(bg="#F2F4F4")
+        ajustar_geometria(self)
+        self.configure(bg=C.FONDO)
 
         self._crear_widgets()
         self._actualizar_estado_botones()
 
     def _crear_widgets(self):
-        titulo = tk.Label(
-            self,
-            text="PTAP — Procesos de diseño",
-            font=("Arial", 14, "bold"),
-            bg="#2E86C1",
-            fg="white",
-            pady=12,
+        tema.encabezado(
+            self, "PTAP — Procesos de diseño",
+            "Planta de Tratamiento de Agua Potable · elija el proceso que desea diseñar",
         )
-        titulo.pack(fill="x")
 
-        tk.Button(
-            self, text="📚 Datos Técnicos de Referencia",
-            font=("Arial", 9, "bold"), bg="#5DADE2", fg="white",
-            activebackground="#2E86C1", bd=0, cursor="hand2",
-            command=self.abrir_datos_tecnicos,
-        ).pack(fill="x", padx=20, pady=(10, 0), ipady=4)
+        cuerpo = tema.area_desplazable(self, bg=C.FONDO, ancho_max=1180, padx=40)
 
-        contenedor = tk.Frame(self, bg="#F2F4F4")
-        contenedor.pack(fill="both", expand=True, padx=20, pady=15)
+        barra = tk.Frame(cuerpo, bg=C.FONDO)
+        barra.pack(fill="x", pady=(28, 4))
+        tk.Label(
+            barra, text="Procesos de la planta", font=fuente(18, "bold"),
+            bg=C.FONDO, fg=C.TEXTO, anchor="w",
+        ).pack(side="left")
+        tema.boton(
+            barra, "📚  Datos técnicos de referencia", self.abrir_datos_tecnicos,
+            tipo="secundario", tamano=10,
+        ).pack(side="right")
+
+        tk.Label(
+            cuerpo,
+            text="Los procesos marcados con ✔ ya fueron calculados y guardados.",
+            font=fuente(10), bg=C.FONDO, fg=C.TEXTO_SECUNDARIO, anchor="w",
+        ).pack(fill="x", pady=(0, 14))
+
+        contenedor = tk.Frame(cuerpo, bg=C.FONDO)
+        contenedor.pack(fill="x", pady=(0, 30))
+        columnas = 2
+        for c in range(columnas):
+            contenedor.grid_columnconfigure(c, weight=1, uniform="procesos")
 
         self.botones = {}
-        for proceso in PROCESOS_PTAP:
+        for i, proceso in enumerate(PROCESOS_PTAP):
             btn = tk.Button(
                 contenedor,
-                text=proceso,
-                font=("Arial", 11),
-                bg="white",
-                fg="#1B2631",
+                text=f"{i + 1:02d}    {proceso}",
+                font=fuente(12, "bold"),
+                bg=C.SUPERFICIE,
+                fg=C.TEXTO,
                 anchor="w",
-                relief="groove",
-                bd=1,
+                padx=24,
+                pady=22,
+                highlightthickness=1,
+                highlightbackground=C.BORDE,
                 cursor="hand2",
                 command=lambda p=proceso: self.abrir_proceso(p),
             )
-            btn.pack(fill="x", pady=4, ipady=8)
+            btn.grid(row=i // columnas, column=i % columnas, sticky="nsew", padx=6, pady=6)
             self.botones[proceso] = btn
 
     def _actualizar_estado_botones(self):
@@ -84,15 +97,15 @@ class ProcesosPTAP(tk.Toplevel):
         btn_bocatoma = self.botones.get("Captación (bocatoma con rejilla)")
         if btn_bocatoma and EstadoProyecto.rejilla_definida():
             btn_bocatoma.config(
-                text="✔ Captación (bocatoma con rejilla)",
-                bg="#EAFAF1", fg="#1E8449",
+                text="✔     Captación (bocatoma con rejilla)",
+                bg=C.EXITO_FONDO, fg=C.EXITO, highlightbackground=C.EXITO,
             )
 
         btn_desarenador = self.botones.get("Desarenador")
         if btn_desarenador and EstadoProyecto.desarenador_definido():
             btn_desarenador.config(
-                text="✔ Desarenador",
-                bg="#EAFAF1", fg="#1E8449",
+                text="✔     Desarenador",
+                bg=C.EXITO_FONDO, fg=C.EXITO, highlightbackground=C.EXITO,
             )
 
     def abrir_proceso(self, nombre_proceso):

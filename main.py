@@ -17,7 +17,9 @@ from ventana_caudal_diseno import VentanaCaudalDiseño
 from ventana_datos_tecnicos import VentanaDatosTecnicos
 from estado_proyecto import EstadoProyecto
 from generador_pdf import generar_informe_pdf
-from ui_utils import ajustar_geometria, hacer_scrollable
+import tema
+from tema import C, fuente
+from ui_utils import ajustar_geometria
 
 
 class AplicacionPrincipal(tk.Tk):
@@ -26,203 +28,196 @@ class AplicacionPrincipal(tk.Tk):
     def __init__(self):
         super().__init__()
         self.title("HydroLab")
-        self.resizable(False, True)
-        self.configure(bg="#1F4E78")
-        ajustar_geometria(self, ancho=520, alto=760, alto_minimo=480)
+        tema.aplicar_tema(self)
+        ajustar_geometria(self)
+        self.configure(bg=C.FONDO)
 
         self._crear_widgets()
 
+    # ------------------------------------------------------------------
     def _crear_widgets(self):
-        titulo = tk.Label(
-            self,
-            text="HydroLab",
-            font=("Arial", 26, "bold"),
-            fg="white",
-            bg="#1F4E78",
-            justify="center",
+        self._crear_barra_lateral()
+
+        zona = tk.Frame(self, bg=C.FONDO)
+        zona.pack(side="left", fill="both", expand=True)
+        cuerpo = tema.area_desplazable(zona, bg=C.FONDO, ancho_max=1180, padx=40)
+
+        # --- Encabezado del panel ---
+        cabecera = tk.Frame(cuerpo, bg=C.FONDO)
+        cabecera.pack(fill="x", pady=(36, 6))
+        tk.Label(
+            cabecera, text="Panel del proyecto", font=fuente(24, "bold"),
+            bg=C.FONDO, fg=C.TEXTO, anchor="w",
+        ).pack(fill="x")
+        tk.Label(
+            cabecera,
+            text="Diseño de plantas de tratamiento de agua potable y residual · "
+                 "Res. 0330 de 2017 (mod. Res. 799 de 2021)",
+            font=fuente(11), bg=C.FONDO, fg=C.TEXTO_SECUNDARIO, anchor="w",
+        ).pack(fill="x", pady=(4, 0))
+
+        # --- Paso 1 y 2: datos base del proyecto ---
+        tema.titulo_seccion(cuerpo, "Datos base del proyecto", bg=C.FONDO)
+        fila_pasos = tk.Frame(cuerpo, bg=C.FONDO)
+        fila_pasos.pack(fill="x")
+        for col in range(3):
+            fila_pasos.grid_columnconfigure(col, weight=1, uniform="pasos")
+
+        self.lbl_estado = self._tarjeta_paso(
+            fila_pasos, 0, "1", "Datos preliminares",
+            "Ubicación, periodo de diseño y proyección poblacional.",
+            "⚠ Datos preliminares aún no definidos", self.abrir_datos_preliminares,
         )
-        titulo.pack(pady=(20, 5))
-
-        subtitulo = tk.Label(
-            self,
-            text="Software de Diseño de Plantas de Tratamiento\nde Agua Potable y Residual (PTAP / PTAR)",
-            font=("Arial", 11),
-            fg="#D9E1F2",
-            bg="#1F4E78",
-            justify="center",
+        self.lbl_estado_caudal_ptap = self._tarjeta_paso(
+            fila_pasos, 1, "2", "Caudal de diseño — PTAP",
+            "Dotación, pérdidas y coeficientes K1 / K2.",
+            "⚠ Caudal de diseño (PTAP) aún no calculado", self.abrir_caudal_diseño_ptap,
         )
-        subtitulo.pack(pady=(0, 15))
-
-        # --- A partir de aquí, todo el contenido va dentro de un área
-        # con scroll: así, sin importar qué tan pequeña sea la pantalla,
-        # nunca queda nada oculto por debajo del borde de la ventana. ---
-        contenedor = tk.Frame(self, bg="#1F4E78")
-        contenedor.pack(fill="both", expand=True)
-
-        canvas = tk.Canvas(contenedor, bg="#1F4E78", highlightthickness=0)
-        scrollbar = ttk.Scrollbar(contenedor, orient="vertical", command=canvas.yview)
-        canvas.configure(yscrollcommand=scrollbar.set)
-        canvas.pack(side="left", fill="both", expand=True)
-        scrollbar.pack(side="right", fill="y")
-
-        cuerpo = tk.Frame(canvas, bg="#1F4E78")
-        hacer_scrollable(canvas, cuerpo)
-
-        btn_datos_tecnicos = tk.Button(
-            cuerpo,
-            text="📚 Datos Técnicos de Referencia",
-            font=("Arial", 10, "bold"),
-            bg="#5DADE2",
-            fg="white",
-            activebackground="#2E86C1",
-            width=28,
-            bd=0,
-            cursor="hand2",
-            command=self.abrir_datos_tecnicos,
+        self.lbl_estado_caudal_ptar = self._tarjeta_paso(
+            fila_pasos, 2, "2", "Caudal de diseño — PTAR",
+            "Caudal de aguas residuales para la PTAR.",
+            "⚠ Caudal de diseño (PTAR) aún no calculado", self.abrir_caudal_diseño_ptar,
         )
-        btn_datos_tecnicos.pack(pady=(0, 10))
 
-        btn_exportar = tk.Button(
-            cuerpo,
-            text="📄 Exportar Informe PDF",
-            font=("Arial", 10, "bold"),
-            bg="#8E44AD",
-            fg="white",
-            activebackground="#6C3483",
-            width=28,
-            bd=0,
-            cursor="hand2",
-            command=self.exportar_informe,
+        # --- Módulos de diseño ---
+        tema.titulo_seccion(cuerpo, "Módulos de diseño", bg=C.FONDO)
+        self.fila_modulos = tk.Frame(cuerpo, bg=C.FONDO)
+        self.fila_modulos.pack(fill="x", pady=(0, 30))
+        self._modulos = 0
+        self.agregar_modulo(
+            "PTAP", "Planta de Tratamiento de Agua Potable",
+            "Captación, desarenador, aducción, mezcla rápida, floculación, "
+            "sedimentación, filtración, desinfección y almacenamiento.",
+            C.PTAP, self.abrir_ptap,
         )
-        btn_exportar.pack(pady=(0, 20))
-
-        btn_datos = tk.Button(
-            cuerpo,
-            text="① Datos Preliminares",
-            font=("Arial", 12, "bold"),
-            bg="#F1C40F",
-            fg="#1B2631",
-            activebackground="#D4AC0D",
-            width=22,
-            height=1,
-            bd=0,
-            cursor="hand2",
-            command=self.abrir_datos_preliminares,
+        self.agregar_modulo(
+            "PTAR", "Planta de Tratamiento de Aguas Residuales",
+            "Pretratamiento, tratamiento primario y secundario de las aguas "
+            "residuales del municipio.",
+            C.PTAR, self.abrir_ptar,
         )
-        btn_datos.pack(pady=(0, 10))
 
-        self.lbl_estado = tk.Label(
-            cuerpo, text="⚠ Datos preliminares aún no definidos",
-            font=("Arial", 9), fg="#F5B041", bg="#1F4E78",
+    # ------------------------------------------------------------------
+    def _crear_barra_lateral(self):
+        barra = tk.Frame(self, bg=C.ENCABEZADO, width=320)
+        barra.pack(side="left", fill="y")
+        barra.pack_propagate(False)
+
+        marca = tk.Frame(barra, bg=C.ENCABEZADO)
+        marca.pack(fill="x", padx=28, pady=(36, 28))
+        tk.Label(
+            marca, text="💧", font=fuente(28), bg=C.ENCABEZADO, fg=C.ACENTO, anchor="w",
+        ).pack(fill="x")
+        tk.Label(
+            marca, text="HydroLab", font=fuente(24, "bold"),
+            bg=C.ENCABEZADO, fg="white", anchor="w",
+        ).pack(fill="x")
+        tk.Label(
+            marca,
+            text="Software de Diseño de Plantas de Tratamiento de Agua Potable "
+                 "y Residual (PTAP / PTAR)",
+            font=fuente(9), bg=C.ENCABEZADO, fg=C.ENCABEZADO_SUBTEXTO,
+            anchor="w", justify="left", wraplength=240,
+        ).pack(fill="x", pady=(6, 0))
+
+        tk.Frame(barra, bg=C.ENCABEZADO_2, height=1).pack(fill="x", padx=28)
+
+        tk.Label(
+            barra, text="HERRAMIENTAS", font=fuente(8, "bold"),
+            bg=C.ENCABEZADO, fg=C.ENCABEZADO_SUBTEXTO, anchor="w",
+        ).pack(fill="x", padx=28, pady=(24, 8))
+
+        def opcion(texto, comando):
+            tk.Button(
+                barra, text=texto, font=fuente(10), anchor="w",
+                bg=C.ENCABEZADO, fg="white", padx=16, pady=10,
+                command=comando,
+            ).pack(fill="x", padx=12, pady=2)
+
+        opcion("📚   Datos técnicos de referencia", self.abrir_datos_tecnicos)
+        opcion("📄   Exportar informe PDF", self.exportar_informe)
+
+        pie = tk.Frame(barra, bg=C.ENCABEZADO)
+        pie.pack(side="bottom", fill="x", padx=28, pady=(0, 28))
+        tema.boton(pie, "Salir", self.salir, tipo="oscuro", tamano=10).pack(fill="x", pady=(0, 18))
+        tk.Label(
+            pie, text="HydroLab v0.2", font=fuente(8, "bold"),
+            bg=C.ENCABEZADO, fg=C.ENCABEZADO_SUBTEXTO, anchor="w",
+        ).pack(fill="x")
+        tk.Label(
+            pie, text="Elier Mendoza\nIng. Ambiental y Sanitario",
+            font=fuente(8, "italic"), bg=C.ENCABEZADO, fg=C.ENCABEZADO_SUBTEXTO,
+            anchor="w", justify="left",
+        ).pack(fill="x")
+
+    # ------------------------------------------------------------------
+    def _tarjeta_paso(self, padre, columna, numero, titulo, descripcion, estado, comando):
+        """Tarjeta de un paso previo (datos preliminares / caudal). Devuelve su etiqueta de estado."""
+        card = tema.tarjeta(padre)
+        card.grid(row=0, column=columna, sticky="nsew", padx=(0 if columna == 0 else 8, 0 if columna == 2 else 8))
+        interior = tk.Frame(card, bg=C.SUPERFICIE)
+        interior.pack(fill="both", expand=True, padx=22, pady=20)
+
+        cabeza = tk.Frame(interior, bg=C.SUPERFICIE)
+        cabeza.pack(fill="x")
+        tk.Label(
+            cabeza, text=f"PASO {numero}", font=fuente(8, "bold"),
+            bg=C.PRIMARIO_SUAVE, fg=C.PRIMARIO, padx=8, pady=3,
+        ).pack(side="left")
+        lbl_titulo = tk.Label(
+            interior, text=titulo, font=fuente(13, "bold"),
+            bg=C.SUPERFICIE, fg=C.TEXTO, anchor="w", justify="left",
         )
-        self.lbl_estado.pack(pady=(0, 8))
+        tema.ajustar_al_ancho(lbl_titulo).pack(fill="x", pady=(10, 0))
 
-        btn_caudal_ptap = tk.Button(
-            cuerpo,
-            text="② Caudal de Diseño — PTAP",
-            font=("Arial", 12, "bold"),
-            bg="#F1C40F",
-            fg="#1B2631",
-            activebackground="#D4AC0D",
-            width=24,
-            height=1,
-            bd=0,
-            cursor="hand2",
-            command=self.abrir_caudal_diseño_ptap,
+        lbl_desc = tk.Label(
+            interior, text=descripcion, font=fuente(10), bg=C.SUPERFICIE,
+            fg=C.TEXTO_SECUNDARIO, anchor="w", justify="left",
         )
-        btn_caudal_ptap.pack(pady=(0, 5))
+        tema.ajustar_al_ancho(lbl_desc).pack(fill="x", pady=(6, 10))
 
-        self.lbl_estado_caudal_ptap = tk.Label(
-            cuerpo, text="⚠ Caudal de diseño (PTAP) aún no calculado",
-            font=("Arial", 9), fg="#F5B041", bg="#1F4E78",
+        lbl = tk.Label(
+            interior, text=estado, font=fuente(9, "bold"), bg=C.ADVERTENCIA_FONDO,
+            fg=C.ADVERTENCIA, anchor="w", justify="left", padx=10, pady=6,
         )
-        self.lbl_estado_caudal_ptap.pack(pady=(0, 8))
+        tema.ajustar_al_ancho(lbl, margen=20)
+        lbl.pack(fill="x", pady=(0, 14))
 
-        btn_caudal_ptar = tk.Button(
-            cuerpo,
-            text="② Caudal de Diseño — PTAR",
-            font=("Arial", 12, "bold"),
-            bg="#F1C40F",
-            fg="#1B2631",
-            activebackground="#D4AC0D",
-            width=24,
-            height=1,
-            bd=0,
-            cursor="hand2",
-            command=self.abrir_caudal_diseño_ptar,
+        tema.boton(interior, "Abrir  →", comando, tipo="secundario", tamano=10).pack(anchor="w")
+        return lbl
+
+    def agregar_modulo(self, sigla, nombre, descripcion, color, comando):
+        """Agrega una tarjeta grande de módulo (PTAP, PTAR, ...) al panel."""
+        col = self._modulos % 2
+        fila = self._modulos // 2
+        self._modulos += 1
+        self.fila_modulos.grid_columnconfigure(col, weight=1, uniform="modulos")
+
+        card = tema.tarjeta(self.fila_modulos)
+        card.grid(row=fila, column=col, sticky="nsew",
+                  padx=(0 if col == 0 else 8, 8 if col == 0 else 0), pady=(0, 16))
+        tk.Frame(card, bg=color, height=6).pack(fill="x")
+        interior = tk.Frame(card, bg=C.SUPERFICIE)
+        interior.pack(fill="both", expand=True, padx=26, pady=22)
+
+        tk.Label(
+            interior, text=sigla, font=fuente(26, "bold"),
+            bg=C.SUPERFICIE, fg=color, anchor="w",
+        ).pack(fill="x")
+        lbl_nombre = tk.Label(
+            interior, text=nombre, font=fuente(12, "bold"),
+            bg=C.SUPERFICIE, fg=C.TEXTO, anchor="w", justify="left",
         )
-        btn_caudal_ptar.pack(pady=(0, 5))
-
-        self.lbl_estado_caudal_ptar = tk.Label(
-            cuerpo, text="⚠ Caudal de diseño (PTAR) aún no calculado",
-            font=("Arial", 9), fg="#F5B041", bg="#1F4E78",
+        tema.ajustar_al_ancho(lbl_nombre).pack(fill="x")
+        lbl_desc = tk.Label(
+            interior, text=descripcion, font=fuente(10), bg=C.SUPERFICIE,
+            fg=C.TEXTO_SECUNDARIO, anchor="w", justify="left",
         )
-        self.lbl_estado_caudal_ptar.pack(pady=(0, 8))
-
-        frame_botones = tk.Frame(cuerpo, bg="#1F4E78")
-        frame_botones.pack(pady=8)
-
-        estilo_boton = {
-            "font": ("Arial", 14, "bold"),
-            "width": 18,
-            "height": 2,
-            "bd": 0,
-            "cursor": "hand2",
-        }
-
-        btn_ptap = tk.Button(
-            frame_botones,
-            text="PTAP",
-            bg="#2E86C1",
-            fg="white",
-            activebackground="#1B4F72",
-            command=self.abrir_ptap,
-            **estilo_boton,
-        )
-        btn_ptap.grid(row=0, column=0, padx=15, pady=10)
-
-        btn_ptar = tk.Button(
-            frame_botones,
-            text="PTAR",
-            bg="#28B463",
-            fg="white",
-            activebackground="#1D8348",
-            command=self.abrir_ptar,
-            **estilo_boton,
-        )
-        btn_ptar.grid(row=0, column=1, padx=15, pady=10)
-
-        btn_salir = tk.Button(
-            cuerpo,
-            text="Salir",
-            font=("Arial", 10, "bold"),
-            bg="#C0392B",
-            fg="white",
-            activebackground="#922B21",
-            width=12,
-            bd=0,
-            cursor="hand2",
-            command=self.salir,
-        )
-        btn_salir.pack(pady=(20, 10))
-
-        version = tk.Label(
-            cuerpo,
-            text="HydroLab v0.2",
-            font=("Arial", 8),
-            fg="#AAB7C4",
-            bg="#1F4E78",
-        )
-        version.pack(pady=(0, 2))
-
-        autor = tk.Label(
-            cuerpo,
-            text="Elier Mendoza — Ing. Ambiental y Sanitario",
-            font=("Arial", 8, "italic"),
-            fg="#AAB7C4",
-            bg="#1F4E78",
-        )
-        autor.pack(pady=(0, 15))
+        tema.ajustar_al_ancho(lbl_desc).pack(fill="x", pady=(8, 16))
+        tk.Button(
+            interior, text=f"Diseñar {sigla}  →", font=fuente(12, "bold"),
+            bg=color, fg="white", padx=22, pady=10, command=comando,
+        ).pack(anchor="w")
 
     def salir(self):
         respuesta = messagebox.askyesno("Salir", "¿Seguro que desea cerrar el programa?")
@@ -283,7 +278,7 @@ class AplicacionPrincipal(tk.Tk):
         self.lbl_estado.config(
             text=f"✔ {EstadoProyecto.municipio} — "
                  f"Población de diseño: {EstadoProyecto.poblacion_diseño:,.0f} hab.",
-            fg="#82E0AA",
+            fg=C.EXITO, bg=C.EXITO_FONDO,
         )
 
     def abrir_caudal_diseño_ptap(self):
@@ -305,7 +300,7 @@ class AplicacionPrincipal(tk.Tk):
     def _actualizar_estado_caudal_ptap(self):
         self.lbl_estado_caudal_ptap.config(
             text=f"✔ Caudal de diseño (PTAP): {EstadoProyecto.caudal_diseño_Ls:,.2f} L/s",
-            fg="#82E0AA",
+            fg=C.EXITO, bg=C.EXITO_FONDO,
         )
 
     def abrir_caudal_diseño_ptar(self):
@@ -327,7 +322,7 @@ class AplicacionPrincipal(tk.Tk):
     def _actualizar_estado_caudal_ptar(self):
         self.lbl_estado_caudal_ptar.config(
             text=f"✔ Caudal de diseño (PTAR): {EstadoProyecto.ptar_caudal_diseño_Ls:,.2f} L/s",
-            fg="#82E0AA",
+            fg=C.EXITO, bg=C.EXITO_FONDO,
         )
 
     def abrir_ptap(self):
