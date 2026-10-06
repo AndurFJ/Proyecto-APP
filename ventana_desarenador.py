@@ -54,6 +54,8 @@ import tkinter as tk
 from tkinter import ttk, messagebox
 
 from estado_proyecto import EstadoProyecto
+import tema
+from tema import C, fuente
 from ui_utils import ajustar_geometria
 
 
@@ -103,9 +105,8 @@ class VentanaDesarenador(tk.Toplevel):
     def __init__(self, master, al_guardar=None):
         super().__init__(master)
         self.title("Desarenador")
-        self.resizable(False, True)
-        ajustar_geometria(self, ancho=640, alto=880)
-        self.configure(bg="#F2F4F4")
+        ajustar_geometria(self)
+        self.configure(bg=C.FONDO)
 
         self.al_guardar = al_guardar
 
@@ -115,73 +116,29 @@ class VentanaDesarenador(tk.Toplevel):
 
     # ------------------------------------------------------------------
     def _crear_estilos(self):
-        estilo = ttk.Style(self)
-        color_editable = "#FEF9E7"
-        borde_editable = "#F1C40F"
-        estilo.configure(
-            "Editable.TEntry", fieldbackground=color_editable,
-            bordercolor=borde_editable, lightcolor=borde_editable,
-        )
-        estilo.configure("Editable.TCombobox", fieldbackground=color_editable)
-        estilo.map(
-            "Editable.TCombobox",
-            fieldbackground=[("readonly", color_editable)],
-        )
+        """Los estilos Editable.TEntry / Editable.TCombobox los define tema.py."""
 
     # ------------------------------------------------------------------
     def _crear_widgets(self):
-        titulo = tk.Label(
-            self, text="DESARENADOR",
-            font=("Arial", 14, "bold"), bg="#1F4E78", fg="white", pady=10,
+        cuerpo, lateral = tema.layout_formulario(
+            self, "DESARENADOR",
+            "Art. 55, Resolución 0330 de 2017 — Diseño por velocidad controlada",
         )
-        titulo.pack(fill="x")
-
-        subtitulo = tk.Label(
-            self,
-            text="Art. 55, Resolución 0330 de 2017 — Diseño por velocidad controlada",
-            font=("Arial", 8, "italic"), bg="#1F4E78", fg="#D9E1F2", pady=6,
-        )
-        subtitulo.pack(fill="x")
-
-        contenedor = tk.Frame(self, bg="#F2F4F4")
-        contenedor.pack(fill="both", expand=True)
-
-        self.canvas = tk.Canvas(contenedor, bg="#F2F4F4", highlightthickness=0)
-        scrollbar = ttk.Scrollbar(contenedor, orient="vertical", command=self.canvas.yview)
-        self.canvas.configure(yscrollcommand=scrollbar.set)
-        self.canvas.pack(side="left", fill="both", expand=True)
-        scrollbar.pack(side="right", fill="y")
-
-        cuerpo_ext = tk.Frame(self.canvas, bg="#F2F4F4")
-        ventana_id = self.canvas.create_window((0, 0), window=cuerpo_ext, anchor="nw")
-        cuerpo_ext.bind(
-            "<Configure>",
-            lambda e: self.canvas.configure(scrollregion=self.canvas.bbox("all")),
-        )
-        self.canvas.bind(
-            "<Configure>",
-            lambda e: self.canvas.itemconfig(ventana_id, width=e.width),
-        )
-
-        def _rueda(event):
-            self.canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
-        self.canvas.bind_all("<MouseWheel>", _rueda)
-
-        cuerpo = tk.Frame(cuerpo_ext, bg="#F2F4F4")
-        cuerpo.pack(fill="both", expand=True, padx=20, pady=15)
+        self.canvas = cuerpo.canvas
 
         def etiqueta(padre, texto, editable=False):
             if editable:
                 texto = f"✎ {texto}   (dato editable)"
             tk.Label(
-                padre, text=texto, font=("Arial", 10, "bold" if editable else "normal"),
-                bg="#F2F4F4", fg="#B9770E" if editable else "black", anchor="w",
+                padre, text=texto, font=fuente(10, "bold" if editable else "normal"),
+                bg=C.SUPERFICIE, fg=C.EDITABLE_TEXTO if editable else C.TEXTO, anchor="w",
             ).pack(fill="x", pady=(8, 2))
 
         def resultado(padre, nombre_attr, valor_inicial="—"):
             lbl = tk.Label(
-                padre, text=valor_inicial, font=("Arial", 11, "bold"),
-                bg="white", fg="#1B4F72", anchor="w", relief="solid", bd=1,
+                padre, text=valor_inicial, font=fuente(11, "bold"),
+                bg=C.RESULTADO_FONDO, fg=C.RESULTADO_TEXTO, anchor="w", relief="flat", bd=0,
+                highlightthickness=1, highlightbackground=C.BORDE, padx=8,
             )
             lbl.pack(fill="x", ipady=4)
             setattr(self, nombre_attr, lbl)
@@ -189,8 +146,8 @@ class VentanaDesarenador(tk.Toplevel):
 
         def nota(padre, texto):
             lbl = tk.Label(
-                padre, text=texto, font=("Arial", 8, "italic"),
-                bg="#F2F4F4", fg="#7B7D7D", anchor="w", justify="left", wraplength=560,
+                padre, text=texto, font=fuente(8, "italic"),
+                bg=C.SUPERFICIE, fg=C.TEXTO_TENUE, anchor="w", justify="left", wraplength=680,
             )
             lbl.pack(fill="x", pady=(0, 2))
             return lbl
@@ -306,39 +263,39 @@ class VentanaDesarenador(tk.Toplevel):
 
         # --- Botón calcular ---
         tk.Button(
-            cuerpo, text="Calcular", font=("Arial", 11, "bold"),
-            bg="#2E86C1", fg="white", cursor="hand2", command=self.calcular,
+            lateral, text="Calcular", font=fuente(11, "bold"),
+            bg=C.PRIMARIO, fg="white", cursor="hand2", command=self.calcular,
         ).pack(fill="x", pady=(15, 10), ipady=6)
 
         # --- Resultado final destacado ---
         marco_final = tk.Frame(
-            cuerpo, bg="#EAFAF1", bd=2, relief="solid",
-            highlightbackground="#1E8449", highlightthickness=2,
+            lateral, bg=C.EXITO_FONDO, bd=0,
+            highlightbackground=C.EXITO, highlightthickness=1,
         )
         marco_final.pack(fill="x", pady=(10, 15))
         tk.Label(
             marco_final, text="✅ DIMENSIONES DEL DESARENADOR (por unidad, por tramo)",
-            font=("Arial", 11, "bold"), bg="#EAFAF1", fg="#1E8449",
+            font=fuente(11, "bold"), bg=C.EXITO_FONDO, fg=C.EXITO,
         ).pack(pady=(10, 4))
         self.lbl_dimensiones_final = tk.Label(
             marco_final, text="L: — m   ×   B: — m   ×   H: — m",
-            font=("Arial", 15, "bold"), bg="#EAFAF1", fg="#1E8449",
+            font=fuente(15, "bold"), bg=C.EXITO_FONDO, fg=C.EXITO,
         )
         self.lbl_dimensiones_final.pack(pady=(0, 4))
         self.lbl_estructura_final = tk.Label(
-            marco_final, text="", font=("Arial", 9, "bold"),
-            bg="#EAFAF1", fg="#1E8449", justify="center", wraplength=560,
+            marco_final, text="", font=fuente(9, "bold"),
+            bg=C.EXITO_FONDO, fg=C.EXITO, justify="center", wraplength=tema.ANCHO_TEXTO_LATERAL,
         )
         self.lbl_estructura_final.pack(pady=(0, 4))
         self.lbl_cumple_final = tk.Label(
-            marco_final, text="", font=("Arial", 9, "bold"),
-            bg="#EAFAF1", fg="#1E8449", justify="center",
+            marco_final, text="", font=fuente(9, "bold"),
+            bg=C.EXITO_FONDO, fg=C.EXITO, justify="center",
         )
         self.lbl_cumple_final.pack(pady=(0, 10))
 
         tk.Button(
-            cuerpo, text="💾 Guardar y continuar", font=("Arial", 12, "bold"),
-            bg="#28B463", fg="white", cursor="hand2", command=self.guardar,
+            lateral, text="💾 Guardar y continuar", font=fuente(12, "bold"),
+            bg=C.EXITO_BOTON, fg="white", cursor="hand2", command=self.guardar,
         ).pack(fill="x", ipady=8, pady=(0, 20))
 
         for entry in (

@@ -1,0 +1,309 @@
+"""
+Cálculos del módulo de Diseño de Operación de Relleno Sanitario (DORS).
+
+Replica, fórmula por fórmula, la hoja de cálculo DORS (hojas "Menu" y
+"Proyección Poblacional"): cálculo poblacional para el diseño de un
+relleno sanitario, con 3 métodos de cálculo para obtener los datos base
+y 3 métodos de proyección (aritmético, geométrico y exponencial) a 50
+años.
+
+Métodos de cálculo (celda "Método de cálculo" del Excel):
+
+1. Base de datos DANE: toma dos datos de la base DANE (2018-2042) del
+   municipio/área elegidos:
+       Tu = 2042 si el año de inicio < 2022; si no, min(año de inicio, 2042)
+       T1 = 2038 si el año de inicio < 2022; si no, Tu - 4
+   y Pu, P1 = población DANE en Tu y T1.
+2. Ingreso manual de datos censales (mínimo 2): Tu = año más reciente,
+   T1 = año más antiguo, Pu y P1 sus poblaciones.
+3. Un dato de censo + una tasa de crecimiento: T0, P0 y r (decimal).
+
+La proyección empieza en el año de inicio (métodos 1 y 2) o en el año
+base del censo (método 3) y cubre 50 años. Fórmulas (métodos 1 y 2):
+
+    Aritmético:  P = Pu + (Pu - P1)/(Tu - T1) · (t - Tu)
+    Geométrico:  P = Pu · (Pu/P1)^((t - Tu)/(Tu - T1))
+    Exponencial: P = Pu · e^((ln Pu - ln P1)·(t - Tu)/(Tu - T1))
+
+Método 3:
+
+    Aritmético:  P = P0 · (1 + r·(t - T0))
+    Geométrico:  P = P0 · (1 + r)^(t - T0)
+    Exponencial: P = P0 · e^(ln(1 + r)·(t - T0))
+
+Cada valor se redondea a 0 decimales igual que ROUND() de Excel (la
+mitad se aleja de cero; el round() de Python redondea al par).
+
+Este archivo no depende de tkinter: se puede probar o reutilizar sin
+abrir ninguna ventana.
+"""
+
+import math
+
+import pandas as pd
+
+import datos_dane
+
+
+METODO_DANE = 1
+METODO_MANUAL = 2
+METODO_TASA = 3
+
+NOMBRES_METODO = {
+    METODO_DANE: "Base de datos DANE",
+    METODO_MANUAL: "Ingreso manual de datos censales (mínimo 2)",
+    METODO_TASA: "Un dato de censo + una tasa de crecimiento",
+}
+
+AÑOS_PROYECCION = 50
+AÑO_DANE_MIN = 2018
+AÑO_DANE_MAX = 2042
+
+COLUMNAS_PROYECCION = ["Aritmético", "Geométrico", "Exponencial"]
+
+
+def redondear_excel(valor):
+    """ROUND(valor, 0) de Excel: la mitad se redondea alejándose de cero."""
+    if valor >= 0:
+        return int(math.floor(valor + 0.5))
+    return -int(math.floor(-valor + 0.5))
+
+
+# ----------------------------------------------------------------------
+def años_base_dane(año_inicio):
+    """
+    Años (Tu, T1) que el método 1 toma de la base DANE, tal como las
+    celdas "Año reciente usado" y "Año antiguo usado" del Excel.
+    """
+    if año_inicio < 2022:
+        return AÑO_DANE_MAX, AÑO_DANE_MAX - 4
+    tu = min(año_inicio, AÑO_DANE_MAX)
+    return tu, tu - 4
+
+
+def aviso_metodo_dane(año_inicio):
+    """Texto de aviso cuando el año de inicio obliga a usar 2038-2042."""
+    if año_inicio < 2022 or año_inicio > AÑO_DANE_MAX:
+        tu, t1 = años_base_dane(año_inicio)
+        return (
+            f"Aviso: con el año de inicio {año_inicio} no hay 5 datos DANE "
+            f"anteriores dentro del rango {AÑO_DANE_MIN}-{AÑO_DANE_MAX}. "
+            f"Se usan los datos {t1}-{tu} para calcular las tasas."
+        )
+    return ""
+
+
+def parametros_metodo_dane(dpnom, municipio, area, año_inicio):
+    """Método 1. Retorna dict con tu, t1, pu, p1 tomados de la base DANE."""
+    tu, t1 = años_base_dane(año_inicio)
+    datos = datos_dane.obtener_datos_municipio(dpnom, municipio, area)
+    if datos.empty:
+        raise ValueError("No hay datos DANE para ese departamento, municipio y área.")
+    por_año = dict(zip(datos["AÑO"].astype(int), datos["TOTAL"].astype(int)))
+    if tu not in por_año or t1 not in por_año:
+        raise ValueError(f"La base DANE no tiene datos para {t1} y {tu} en ese municipio.")
+    return {
+        "metodo": METODO_DANE,
+        "tu": tu, "t1": t1,
+        "pu": por_año[tu], "p1": por_año[t1],
+    }
+
+
+def parametros_metodo_manual(puntos):
+    """
+    Método 2. `puntos` es una lista de (año, población) ya completos.
+    Usa solo el dato más reciente (Tu, Pu) y el más antiguo (T1, P1).
+    """
+    if len(puntos) < 2:
+        raise ValueError("Ingrese al menos 2 datos (año y población) para el método 2.")
+    años = [a for a, _ in puntos]
+    if len(set(años)) != len(años):
+        raise ValueError("Hay años repetidos en la tabla; deben ser todos diferentes.")
+    if any(p <= 0 for _, p in puntos):
+        raise ValueError("Las poblaciones deben ser mayores que cero.")
+    por_año = dict(puntos)
+    tu, t1 = max(años), min(años)
+    return {
+        "metodo": METODO_MANUAL,
+        "tu": tu, "t1": t1,
+        "pu": por_año[tu], "p1": por_año[t1],
+    }
+
+
+def parametros_metodo_tasa(año_base, tasa_porcentaje, poblacion_base):
+    """Método 3. Un dato de censo + tasa de crecimiento anual en %."""
+    if poblacion_base <= 0:
+        raise ValueError("La población del año base debe ser mayor que cero.")
+    if tasa_porcentaje <= -100:
+        raise ValueError("La tasa de crecimiento debe ser mayor que -100 %.")
+    return {
+        "metodo": METODO_TASA,
+        "t0": año_base, "p0": poblacion_base,
+        "r": tasa_porcentaje / 100,
+    }
+
+
+# ----------------------------------------------------------------------
+def poblacion_en(params, t):
+    """(aritmético, geométrico, exponencial) sin redondear para el año t."""
+    if params["metodo"] == METODO_TASA:
+        p0, r, dt = params["p0"], params["r"], t - params["t0"]
+        return (
+            p0 * (1 + r * dt),
+            p0 * (1 + r) ** dt,
+            p0 * math.exp(math.log(1 + r) * dt),
+        )
+
+    pu, p1, tu, t1 = params["pu"], params["p1"], params["tu"], params["t1"]
+    n = tu - t1
+    return (
+        pu + (pu - p1) / n * (t - tu),
+        pu * (pu / p1) ** ((t - tu) / n),
+        pu * math.exp((math.log(pu) - math.log(p1)) * (t - tu) / n),
+    )
+
+
+def año_inicial_proyeccion(params, año_inicio):
+    """Métodos 1 y 2 empiezan en el año de inicio; el 3, en el año base."""
+    return params["t0"] if params["metodo"] == METODO_TASA else año_inicio
+
+
+def proyectar(params, año_inicial, años=AÑOS_PROYECCION):
+    """DataFrame (AÑO, Aritmético, Geométrico, Exponencial) de `años` filas."""
+    filas = []
+    for t in range(año_inicial, año_inicial + años):
+        arit, geom, expo = poblacion_en(params, t)
+        filas.append({
+            "AÑO": t,
+            "Aritmético": redondear_excel(arit),
+            "Geométrico": redondear_excel(geom),
+            "Exponencial": redondear_excel(expo),
+        })
+    return pd.DataFrame(filas)
+
+
+def descripcion_parametros(params):
+    """Lista de (etiqueta, valor) con los 'cálculos internos' del Excel."""
+    if params["metodo"] == METODO_TASA:
+        return [
+            ("Año base, T0", f"{params['t0']}"),
+            ("Población base, P0", f"{params['p0']:,.0f} hab"),
+            ("Tasa de crecimiento, r", f"{params['r'] * 100:,.3f} %"),
+        ]
+    return [
+        ("Año reciente, Tu", f"{params['tu']}"),
+        ("Población reciente, Pu", f"{params['pu']:,.0f} hab"),
+        ("Año antiguo, T1", f"{params['t1']}"),
+        ("Población antigua, P1", f"{params['p1']:,.0f} hab"),
+    ]
+
+
+# ======================================================================
+# Paso 2 — Residuos, volumen y área del relleno (método de celda diaria,
+# J. Jaramillo, "Guía para el diseño, construcción y operación de
+# rellenos sanitarios manuales", OPS/CEPIS).
+#
+# Para cada año i de la vida útil (i = 0 en el primer año):
+#
+#     PPC_i  = PPC_0 · (1 + incremento)^i              kg/hab·día
+#     DSd_i  = P_i · PPC_i                             kg/día producidos
+#     DSr_i  = DSd_i · cobertura                       kg/día recolectados
+#     DSa_i  = DSr_i · 365 / 1000                      t/año
+#     Vc_i   = DSr_i · 365 / Drsm                      m³/año compactados
+#     Vmc_i  = Vc_i · m.c.                             m³/año de cobertura
+#     Vrs_i  = Vc_i + Vmc_i                            m³/año de relleno
+#
+# Volumen total Vrs = Σ Vrs_i; área a rellenar Ars = Vrs / hrs; área
+# total At = F · Ars (F cubre vías, cerca, drenajes, retiros, etc.).
+#
+# Celda diaria (operación), con los residuos que llegan el día de trabajo:
+#
+#     DSr_lab = DSr · 7 / días laborables por semana
+#     Vcelda  = DSr_lab / Drsm · (1 + m.c.)            m³/día
+#     Acelda  = Vcelda / hc                            m²
+#     largo   = Acelda / ancho de la celda             m
+# ======================================================================
+
+PPC_DEFECTO = 0.60                # kg/hab·día
+INCREMENTO_PPC_DEFECTO = 1.0      # % anual
+COBERTURA_DEFECTO = 90.0          # % de recolección
+DENSIDAD_COMPACTADA_DEFECTO = 500.0   # kg/m³ (manual: 400-600)
+MATERIAL_COBERTURA_DEFECTO = 20.0     # % del volumen compactado (20-25 %)
+PROFUNDIDAD_DEFECTO = 6.0         # m, altura media del relleno
+FACTOR_AREA_DEFECTO = 1.3         # áreas adicionales (1.2-1.4)
+VIDA_UTIL_DEFECTO = 10            # años
+DIAS_LABORABLES_DEFECTO = 6       # días por semana
+ALTURA_CELDA_DEFECTO = 1.0        # m (manual: 1.0-1.5)
+ANCHO_CELDA_DEFECTO = 3.0         # m (frente de trabajo)
+
+
+def calcular_volumen_area(tabla, metodo, vida_util, ppc0, incremento_pct,
+                          cobertura_pct, densidad, cobertura_material_pct,
+                          profundidad, factor_area):
+    """
+    Tabla año por año de residuos y volúmenes durante la vida útil, más
+    los totales de volumen y área. `tabla` es la proyección poblacional
+    del paso 1 y `metodo` la columna adoptada.
+    """
+    if not 1 <= vida_util <= len(tabla):
+        raise ValueError(f"La vida útil debe estar entre 1 y {len(tabla)} años.")
+    for nombre, valor in [("La PPC", ppc0), ("La densidad", densidad),
+                          ("La profundidad", profundidad), ("El factor de área", factor_area)]:
+        if valor <= 0:
+            raise ValueError(f"{nombre} debe ser mayor que cero.")
+    if not 0 < cobertura_pct <= 100:
+        raise ValueError("La cobertura de recolección debe estar entre 0 y 100 %.")
+    if cobertura_material_pct < 0:
+        raise ValueError("El material de cobertura no puede ser negativo.")
+
+    mc = cobertura_material_pct / 100
+    filas = []
+    acumulado = 0.0
+    for i in range(vida_util):
+        fila_pob = tabla.iloc[i]
+        poblacion = float(fila_pob[metodo])
+        ppc = ppc0 * (1 + incremento_pct / 100) ** i
+        dsd = poblacion * ppc
+        dsr = dsd * cobertura_pct / 100
+        v_comp = dsr * 365 / densidad
+        v_mc = v_comp * mc
+        v_rs = v_comp + v_mc
+        acumulado += v_rs
+        filas.append({
+            "AÑO": int(fila_pob["AÑO"]),
+            "Población": poblacion,
+            "PPC": ppc,
+            "DSd": dsd / 1000,          # t/día producidos
+            "DSr": dsr / 1000,          # t/día recolectados
+            "DSa": dsr * 365 / 1000,    # t/año
+            "Vcompactado": v_comp,
+            "Vcobertura": v_mc,
+            "Vrelleno": v_rs,
+            "Vacumulado": acumulado,
+        })
+    df = pd.DataFrame(filas)
+    area_relleno = acumulado / profundidad
+    return df, {
+        "volumen_total": acumulado,
+        "residuos_total": float(df["DSa"].sum()),
+        "area_relleno": area_relleno,
+        "area_total": area_relleno * factor_area,
+    }
+
+
+def calcular_celda_diaria(dsr_t_dia, densidad, cobertura_material_pct,
+                          dias_laborables, altura_celda, ancho_celda):
+    """Dimensiones de la celda diaria para un caudal de residuos (t/día)."""
+    if not 1 <= dias_laborables <= 7:
+        raise ValueError("Los días laborables deben estar entre 1 y 7.")
+    if altura_celda <= 0 or ancho_celda <= 0:
+        raise ValueError("La altura y el ancho de la celda deben ser mayores que cero.")
+    dsr_lab = dsr_t_dia * 1000 * 7 / dias_laborables
+    volumen = dsr_lab / densidad * (1 + cobertura_material_pct / 100)
+    area = volumen / altura_celda
+    return {
+        "residuos_dia_laboral": float(dsr_lab / 1000),   # t/día laborable
+        "volumen": float(volumen),
+        "area": float(area),
+        "largo": float(area / ancho_celda),
+    }

@@ -49,6 +49,8 @@ from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 
 import datos_dane
 from estado_proyecto import EstadoProyecto
+import tema
+from tema import C, fuente
 from ui_utils import ajustar_geometria
 
 
@@ -61,9 +63,8 @@ class VentanaDatosPreliminares(tk.Toplevel):
     def __init__(self, master, al_guardar=None):
         super().__init__(master)
         self.title("Datos Preliminares — Proyección Poblacional")
-        self.resizable(False, True)
-        ajustar_geometria(self, ancho=920, alto=700)
-        self.configure(bg="#F2F4F4")
+        ajustar_geometria(self)
+        self.configure(bg=C.FONDO)
 
         self.al_guardar = al_guardar  # callback opcional al guardar
         self.df_proyeccion = None
@@ -74,30 +75,28 @@ class VentanaDatosPreliminares(tk.Toplevel):
 
     # ------------------------------------------------------------------
     def _crear_widgets(self):
-        titulo = tk.Label(
-            self,
-            text="DATOS PRELIMINARES — Proyección Poblacional",
-            font=("Arial", 14, "bold"),
-            bg="#1F4E78",
-            fg="white",
-            pady=10,
+        tema.encabezado(
+            self, "DATOS PRELIMINARES — Proyección Poblacional",
+            "Ubicación, periodo de diseño y proyección por los métodos aritmético, "
+            "geométrico y exponencial",
         )
-        titulo.pack(fill="x")
 
-        cuerpo = tk.Frame(self, bg="#F2F4F4")
-        cuerpo.pack(fill="both", expand=True, padx=15, pady=10)
+        cuerpo = tk.Frame(self, bg=C.FONDO)
+        cuerpo.pack(fill="both", expand=True, padx=32, pady=24)
 
-        panel_izq_contenedor = tk.Frame(cuerpo, bg="#F2F4F4", width=300)
-        panel_izq_contenedor.pack(side="left", fill="y", padx=(0, 15))
+        panel_izq_contenedor = tema.tarjeta(cuerpo)
+        panel_izq_contenedor.configure(width=400)
+        panel_izq_contenedor.pack(side="left", fill="y", padx=(0, 24))
         panel_izq_contenedor.pack_propagate(False)
 
-        canvas_izq = tk.Canvas(panel_izq_contenedor, bg="#F2F4F4", highlightthickness=0, width=280)
+        canvas_izq = tk.Canvas(panel_izq_contenedor, bg=C.SUPERFICIE, highlightthickness=0, width=380)
+        canvas_izq._hydrolab_scroll = True
         scrollbar_izq = ttk.Scrollbar(panel_izq_contenedor, orient="vertical", command=canvas_izq.yview)
         canvas_izq.configure(yscrollcommand=scrollbar_izq.set)
         canvas_izq.pack(side="left", fill="both", expand=True)
         scrollbar_izq.pack(side="right", fill="y")
 
-        panel_izq = tk.Frame(canvas_izq, bg="#F2F4F4")
+        panel_izq = tk.Frame(canvas_izq, bg=C.SUPERFICIE, padx=22, pady=10)
         ventana_izq_id = canvas_izq.create_window((0, 0), window=panel_izq, anchor="nw")
         panel_izq.bind(
             "<Configure>",
@@ -108,11 +107,7 @@ class VentanaDatosPreliminares(tk.Toplevel):
             lambda e: canvas_izq.itemconfig(ventana_izq_id, width=e.width),
         )
 
-        def _rueda_izq(event):
-            canvas_izq.yview_scroll(int(-1 * (event.delta / 120)), "units")
-        canvas_izq.bind_all("<MouseWheel>", _rueda_izq)
-
-        panel_der = tk.Frame(cuerpo, bg="white", bd=1, relief="solid")
+        panel_der = tema.tarjeta(cuerpo)
         panel_der.pack(side="right", fill="both", expand=True)
 
         self._crear_panel_entrada(panel_izq)
@@ -121,8 +116,8 @@ class VentanaDatosPreliminares(tk.Toplevel):
     # ------------------------------------------------------------------
     def _crear_panel_entrada(self, padre):
         def etiqueta(texto):
-            tk.Label(padre, text=texto, font=("Arial", 10, "bold"),
-                     bg="#F2F4F4", anchor="w").pack(fill="x", pady=(10, 2))
+            tk.Label(padre, text=texto, font=fuente(10, "bold"),
+                     bg=C.SUPERFICIE, anchor="w").pack(fill="x", pady=(10, 2))
 
         etiqueta("Fuente de datos poblacionales:")
         self.cb_fuente = ttk.Combobox(
@@ -144,7 +139,7 @@ class VentanaDatosPreliminares(tk.Toplevel):
         self.cb_municipio.pack(fill="x")
 
         # --- Contenedor que alterna entre los 3 paneles de fuente de datos ---
-        self.contenedor_fuente = tk.Frame(padre, bg="#F2F4F4")
+        self.contenedor_fuente = tk.Frame(padre, bg=C.SUPERFICIE)
         self.contenedor_fuente.pack(fill="x")
 
         self._crear_panel_area(self.contenedor_fuente)
@@ -164,8 +159,8 @@ class VentanaDatosPreliminares(tk.Toplevel):
         self.entry_periodo.insert(0, "25")
 
         btn_calcular = tk.Button(
-            padre, text="Calcular proyección", font=("Arial", 11, "bold"),
-            bg="#2E86C1", fg="white", cursor="hand2",
+            padre, text="Calcular proyección", font=fuente(11, "bold"),
+            bg=C.PRIMARIO, fg="white", cursor="hand2",
             command=self.calcular_proyeccion,
         )
         btn_calcular.pack(fill="x", pady=(20, 10), ipady=6)
@@ -179,15 +174,15 @@ class VentanaDatosPreliminares(tk.Toplevel):
         self.cb_metodo_diseño.current(1)  # geométrico por defecto
 
         self.lbl_poblacion_diseño = tk.Label(
-            padre, text="Población de diseño: —", font=("Arial", 10, "bold"),
-            bg="#F2F4F4", fg="#1B4F72", justify="left", anchor="w", wraplength=250,
+            padre, text="Población de diseño: —", font=fuente(10, "bold"),
+            bg=C.SUPERFICIE, fg=C.RESULTADO_TEXTO, justify="left", anchor="w", wraplength=320,
         )
         self.lbl_poblacion_diseño.pack(fill="x", pady=(10, 5))
         self.cb_metodo_diseño.bind("<<ComboboxSelected>>", self._actualizar_poblacion_diseño)
 
         btn_guardar = tk.Button(
-            padre, text="Guardar y continuar", font=("Arial", 11, "bold"),
-            bg="#28B463", fg="white", cursor="hand2",
+            padre, text="Guardar y continuar", font=fuente(11, "bold"),
+            bg=C.EXITO_BOTON, fg="white", cursor="hand2",
             command=self.guardar,
         )
         btn_guardar.pack(fill="x", pady=(20, 10), ipady=6)
@@ -195,9 +190,9 @@ class VentanaDatosPreliminares(tk.Toplevel):
     # ------------------------------------------------------------------
     def _crear_panel_area(self, padre):
         """Panel de la fuente DANE: área geográfica."""
-        self.frame_area = tk.Frame(padre, bg="#F2F4F4")
-        tk.Label(self.frame_area, text="Área geográfica:", font=("Arial", 10, "bold"),
-                 bg="#F2F4F4", anchor="w").pack(fill="x", pady=(10, 2))
+        self.frame_area = tk.Frame(padre, bg=C.SUPERFICIE)
+        tk.Label(self.frame_area, text="Área geográfica:", font=fuente(10, "bold"),
+                 bg=C.SUPERFICIE, anchor="w").pack(fill="x", pady=(10, 2))
         self.cb_area = ttk.Combobox(
             self.frame_area,
             values=["Cabecera Municipal", "Centros Poblados y Rural Disperso", "Total"],
@@ -209,52 +204,52 @@ class VentanaDatosPreliminares(tk.Toplevel):
     # ------------------------------------------------------------------
     def _crear_panel_manual(self, padre):
         """Panel de la fuente 'Ingreso manual — datos censales (2 o más)'."""
-        self.frame_manual = tk.Frame(padre, bg="#F2F4F4")
+        self.frame_manual = tk.Frame(padre, bg=C.SUPERFICIE)
         tk.Label(self.frame_manual, text="✎ Datos censales — mínimo 2, sin máximo (dato editable):",
-                 font=("Arial", 10, "bold"), bg="#F2F4F4", fg="#B9770E",
-                 anchor="w", wraplength=260, justify="left").pack(fill="x", pady=(10, 4))
+                 font=fuente(10, "bold"), bg=C.SUPERFICIE, fg=C.EDITABLE_TEXTO,
+                 anchor="w", wraplength=320, justify="left").pack(fill="x", pady=(10, 4))
 
-        cabecera = tk.Frame(self.frame_manual, bg="#F2F4F4")
+        cabecera = tk.Frame(self.frame_manual, bg=C.SUPERFICIE)
         cabecera.pack(fill="x")
-        tk.Label(cabecera, text="Año", width=13, bg="#F2F4F4",
-                 font=("Arial", 9, "bold"), anchor="w").pack(side="left")
-        tk.Label(cabecera, text="Población (hab.)", width=16, bg="#F2F4F4",
-                 font=("Arial", 9, "bold"), anchor="w").pack(side="left")
+        tk.Label(cabecera, text="Año", width=13, bg=C.SUPERFICIE,
+                 font=fuente(9, "bold"), anchor="w").pack(side="left")
+        tk.Label(cabecera, text="Población (hab.)", width=16, bg=C.SUPERFICIE,
+                 font=fuente(9, "bold"), anchor="w").pack(side="left")
 
         # Contenedor donde viven las filas — permite agregar más dinámicamente
-        self.frame_filas_manual = tk.Frame(self.frame_manual, bg="#F2F4F4")
+        self.frame_filas_manual = tk.Frame(self.frame_manual, bg=C.SUPERFICIE)
         self.frame_filas_manual.pack(fill="x")
 
         self.entries_manual = []
         for _ in range(5):
             self._agregar_fila_manual()
 
-        frame_botones_filas = tk.Frame(self.frame_manual, bg="#F2F4F4")
+        frame_botones_filas = tk.Frame(self.frame_manual, bg=C.SUPERFICIE)
         frame_botones_filas.pack(fill="x", pady=(6, 0))
 
         tk.Button(
-            frame_botones_filas, text="+ Agregar dato", font=("Arial", 9, "bold"),
-            bg="#2E86C1", fg="white", cursor="hand2",
+            frame_botones_filas, text="+ Agregar dato", font=fuente(9, "bold"),
+            bg=C.PRIMARIO, fg="white", cursor="hand2",
             command=self._agregar_fila_manual,
         ).pack(side="left")
 
         tk.Button(
-            frame_botones_filas, text="− Quitar última fila", font=("Arial", 9),
-            bg="#AAB7C4", fg="white", cursor="hand2",
+            frame_botones_filas, text="− Quitar última fila", font=fuente(9),
+            bg=C.TEXTO_TENUE, fg="white", cursor="hand2",
             command=self._quitar_fila_manual,
         ).pack(side="left", padx=(6, 0))
 
         tk.Label(
             self.frame_manual,
             text="Puede dejar filas en blanco si no las necesita; con 2 datos completos alcanza.",
-            font=("Arial", 8, "italic"), bg="#F2F4F4", fg="#5D6D7E",
-            anchor="w", justify="left", wraplength=260,
+            font=fuente(8, "italic"), bg=C.SUPERFICIE, fg=C.TEXTO_SECUNDARIO,
+            anchor="w", justify="left", wraplength=320,
         ).pack(fill="x", pady=(4, 0))
 
     # ------------------------------------------------------------------
     def _agregar_fila_manual(self):
         """Agrega una nueva fila (año, población) al panel de ingreso manual."""
-        fila = tk.Frame(self.frame_filas_manual, bg="#F2F4F4")
+        fila = tk.Frame(self.frame_filas_manual, bg=C.SUPERFICIE)
         fila.pack(fill="x", pady=2)
         e_año = ttk.Entry(fila, width=13)
         e_año.pack(side="left", padx=(0, 4))
@@ -273,22 +268,22 @@ class VentanaDatosPreliminares(tk.Toplevel):
     # ------------------------------------------------------------------
     def _crear_panel_tasa(self, padre):
         """Panel de la fuente 'Año censal + tasa de crecimiento'."""
-        self.frame_tasa = tk.Frame(padre, bg="#F2F4F4")
+        self.frame_tasa = tk.Frame(padre, bg=C.SUPERFICIE)
 
         tk.Label(self.frame_tasa, text="✎ Año del dato base (dato editable):",
-                 font=("Arial", 10, "bold"), bg="#F2F4F4", fg="#B9770E",
+                 font=fuente(10, "bold"), bg=C.SUPERFICIE, fg=C.EDITABLE_TEXTO,
                  anchor="w").pack(fill="x", pady=(10, 2))
         self.entry_año_censo = ttk.Entry(self.frame_tasa, width=32)
         self.entry_año_censo.pack(fill="x")
 
         tk.Label(self.frame_tasa, text="✎ Población en ese año (dato editable):",
-                 font=("Arial", 10, "bold"), bg="#F2F4F4", fg="#B9770E",
+                 font=fuente(10, "bold"), bg=C.SUPERFICIE, fg=C.EDITABLE_TEXTO,
                  anchor="w").pack(fill="x", pady=(10, 2))
         self.entry_pob_censo = ttk.Entry(self.frame_tasa, width=32)
         self.entry_pob_censo.pack(fill="x")
 
         tk.Label(self.frame_tasa, text="✎ Tasa de crecimiento anual, % (dato editable):",
-                 font=("Arial", 10, "bold"), bg="#F2F4F4", fg="#B9770E",
+                 font=fuente(10, "bold"), bg=C.SUPERFICIE, fg=C.EDITABLE_TEXTO,
                  anchor="w").pack(fill="x", pady=(10, 2))
         self.entry_tasa = ttk.Entry(self.frame_tasa, width=32)
         self.entry_tasa.pack(fill="x")
@@ -318,23 +313,24 @@ class VentanaDatosPreliminares(tk.Toplevel):
 
     # ------------------------------------------------------------------
     def _crear_panel_resultados(self, padre):
-        frame_buscar = tk.Frame(padre, bg="white")
-        frame_buscar.pack(fill="x", padx=10, pady=(10, 0))
+        frame_buscar = tk.Frame(padre, bg=C.SUPERFICIE)
+        frame_buscar.pack(fill="x", padx=20, pady=(18, 0))
 
         tk.Label(frame_buscar, text="Ver población en el año:",
-                 font=("Arial", 9, "bold"), bg="white").pack(side="left")
+                 font=fuente(9, "bold"), bg=C.SUPERFICIE).pack(side="left")
         self.entry_buscar_año = ttk.Entry(frame_buscar, width=8)
         self.entry_buscar_año.pack(side="left", padx=6)
-        tk.Button(frame_buscar, text="Buscar", font=("Arial", 9),
+        tk.Button(frame_buscar, text="Buscar", font=fuente(9, "bold"),
+                  bg=C.PRIMARIO_SUAVE, fg=C.PRIMARIO, padx=12, pady=4,
                   command=self.buscar_año, cursor="hand2").pack(side="left")
         self.lbl_resultado_busqueda = tk.Label(
-            frame_buscar, text="", font=("Arial", 9, "bold"),
-            fg="#1B4F72", bg="white",
+            frame_buscar, text="", font=fuente(9, "bold"),
+            fg=C.RESULTADO_TEXTO, bg=C.SUPERFICIE,
         )
         self.lbl_resultado_busqueda.pack(side="left", padx=12)
 
         frame_tabla = tk.Frame(padre)
-        frame_tabla.pack(fill="x", padx=10, pady=10)
+        frame_tabla.pack(fill="x", padx=20, pady=14)
 
         scrollbar = ttk.Scrollbar(frame_tabla, orient="vertical")
         self.tabla = ttk.Treeview(
@@ -357,14 +353,14 @@ class VentanaDatosPreliminares(tk.Toplevel):
         self.figura = Figure(figsize=(6.2, 3.9), dpi=90)
         self.ax = self.figura.add_subplot(111)
         self.canvas = FigureCanvasTkAgg(self.figura, master=padre)
-        self.canvas.get_tk_widget().pack(fill="both", expand=True, padx=10, pady=(0, 5))
+        self.canvas.get_tk_widget().pack(fill="both", expand=True, padx=20, pady=(0, 5))
 
         btn_exportar = tk.Button(
-            padre, text="📷 Exportar gráfica como imagen", font=("Arial", 9, "bold"),
-            bg="#5D6D7E", fg="white", cursor="hand2",
+            padre, text="📷 Exportar gráfica como imagen", font=fuente(9, "bold"),
+            bg=C.TEXTO_SECUNDARIO, fg="white", cursor="hand2",
             command=self.exportar_grafica,
         )
-        btn_exportar.pack(fill="x", padx=10, pady=(0, 10))
+        btn_exportar.pack(fill="x", padx=20, pady=(0, 18), ipady=4)
 
     # ------------------------------------------------------------------
     def _al_cambiar_depto(self, event=None):
@@ -601,7 +597,7 @@ class VentanaDatosPreliminares(tk.Toplevel):
                 xytext=(4, 6),
                 textcoords="offset points",
                 fontsize=7,
-                color="#5D6D7E",
+                color=C.TEXTO_SECUNDARIO,
             )
 
         self.ax.set_xlabel("Año")
@@ -649,7 +645,7 @@ class VentanaDatosPreliminares(tk.Toplevel):
         fila = self.df_proyeccion[self.df_proyeccion["AÑO"] == año_buscado]
         if fila.empty:
             self.lbl_resultado_busqueda.config(
-                text=f"Año {año_buscado} fuera del rango proyectado.", fg="#C0392B"
+                text=f"Año {año_buscado} fuera del rango proyectado.", fg=C.PELIGRO
             )
             for elem in self._elementos_resaltado:
                 elem.remove()
@@ -662,7 +658,7 @@ class VentanaDatosPreliminares(tk.Toplevel):
         exp_ = fila.iloc[0]["Exponencial"]
         self.lbl_resultado_busqueda.config(
             text=f"{año_buscado} → Arit: {arit:,.0f} | Geom: {geom:,.0f} | Exp: {exp_:,.0f}",
-            fg="#1B4F72",
+            fg=C.RESULTADO_TEXTO,
         )
 
         # Ubicar y seleccionar la fila correspondiente en la tabla
@@ -687,7 +683,7 @@ class VentanaDatosPreliminares(tk.Toplevel):
 
         for valor, color in [(arit, "#1F77B4"), (geom, "#FF7F0E"), (exp_, "#2CA02C")]:
             punto, = self.ax.plot(año, valor, marker="o", markersize=10,
-                                   markerfacecolor=color, markeredgecolor="black",
+                                   markerfacecolor=color, markeredgecolor=C.TEXTO,
                                    markeredgewidth=1.2, zorder=5)
             self._elementos_resaltado.append(punto)
 

@@ -19,6 +19,8 @@ import tkinter as tk
 from tkinter import ttk, messagebox
 
 from estado_proyecto import EstadoProyecto
+import tema
+from tema import C, fuente
 from ui_utils import ajustar_geometria
 
 
@@ -54,9 +56,8 @@ class VentanaBocatomaRejilla(tk.Toplevel):
     def __init__(self, master, al_guardar=None):
         super().__init__(master)
         self.title("Captación — Bocatoma con Rejilla")
-        self.resizable(False, True)
-        ajustar_geometria(self, ancho=620, alto=780)
-        self.configure(bg="#F2F4F4")
+        ajustar_geometria(self)
+        self.configure(bg=C.FONDO)
 
         self.al_guardar = al_guardar
 
@@ -66,66 +67,28 @@ class VentanaBocatomaRejilla(tk.Toplevel):
 
     # ------------------------------------------------------------------
     def _crear_estilos(self):
-        estilo = ttk.Style(self)
-        color_editable = "#FEF9E7"
-        borde_editable = "#F1C40F"
-        estilo.configure(
-            "Editable.TEntry", fieldbackground=color_editable,
-            bordercolor=borde_editable, lightcolor=borde_editable,
-        )
-        estilo.configure("Editable.TCombobox", fieldbackground=color_editable)
-        estilo.map(
-            "Editable.TCombobox",
-            fieldbackground=[("readonly", color_editable)],
-        )
+        """Los estilos Editable.TEntry / Editable.TCombobox los define tema.py."""
 
     # ------------------------------------------------------------------
     def _crear_widgets(self):
-        titulo = tk.Label(
-            self, text="CAPTACIÓN — BOCATOMA CON REJILLA",
-            font=("Arial", 14, "bold"), bg="#1F4E78", fg="white", pady=10,
+        cuerpo, lateral = tema.layout_formulario(
+            self, "CAPTACIÓN — BOCATOMA CON REJILLA",
+            "Diseño de la rejilla de captación (RAS 2000 / Res. 0330 de 2017)",
         )
-        titulo.pack(fill="x")
-
-        contenedor = tk.Frame(self, bg="#F2F4F4")
-        contenedor.pack(fill="both", expand=True)
-
-        canvas = tk.Canvas(contenedor, bg="#F2F4F4", highlightthickness=0)
-        scrollbar = ttk.Scrollbar(contenedor, orient="vertical", command=canvas.yview)
-        canvas.configure(yscrollcommand=scrollbar.set)
-        canvas.pack(side="left", fill="both", expand=True)
-        scrollbar.pack(side="right", fill="y")
-
-        cuerpo_ext = tk.Frame(canvas, bg="#F2F4F4")
-        ventana_id = canvas.create_window((0, 0), window=cuerpo_ext, anchor="nw")
-        cuerpo_ext.bind(
-            "<Configure>",
-            lambda e: canvas.configure(scrollregion=canvas.bbox("all")),
-        )
-        canvas.bind(
-            "<Configure>",
-            lambda e: canvas.itemconfig(ventana_id, width=e.width),
-        )
-
-        def _rueda(event):
-            canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
-        canvas.bind_all("<MouseWheel>", _rueda)
-
-        cuerpo = tk.Frame(cuerpo_ext, bg="#F2F4F4")
-        cuerpo.pack(fill="both", expand=True, padx=20, pady=15)
 
         def etiqueta(padre, texto, editable=False):
             if editable:
                 texto = f"✎ {texto}   (dato editable)"
             tk.Label(
-                padre, text=texto, font=("Arial", 10, "bold" if editable else "normal"),
-                bg="#F2F4F4", fg="#B9770E" if editable else "black", anchor="w",
+                padre, text=texto, font=fuente(10, "bold" if editable else "normal"),
+                bg=C.SUPERFICIE, fg=C.EDITABLE_TEXTO if editable else C.TEXTO, anchor="w",
             ).pack(fill="x", pady=(8, 2))
 
         def resultado(padre, nombre_attr, valor_inicial="—"):
             lbl = tk.Label(
-                padre, text=valor_inicial, font=("Arial", 11, "bold"),
-                bg="white", fg="#1B4F72", anchor="w", relief="solid", bd=1,
+                padre, text=valor_inicial, font=fuente(11, "bold"),
+                bg=C.RESULTADO_FONDO, fg=C.RESULTADO_TEXTO, anchor="w", relief="flat", bd=0,
+                highlightthickness=1, highlightbackground=C.BORDE, padx=8,
             )
             lbl.pack(fill="x", ipady=4)
             setattr(self, nombre_attr, lbl)
@@ -157,7 +120,7 @@ class VentanaBocatomaRejilla(tk.Toplevel):
         self.cb_inclinacion.bind("<<ComboboxSelected>>", self._al_cambiar_inclinacion)
 
         self.lbl_rango_inclinacion = tk.Label(
-            cuerpo, text="", font=("Arial", 8, "italic"), bg="#F2F4F4", fg="#7B7D7D", anchor="w",
+            cuerpo, text="", font=fuente(8, "italic"), bg=C.SUPERFICIE, fg=C.TEXTO_TENUE, anchor="w",
         )
         self.lbl_rango_inclinacion.pack(fill="x")
 
@@ -228,41 +191,41 @@ class VentanaBocatomaRejilla(tk.Toplevel):
 
         # --- Botón calcular ---
         tk.Button(
-            cuerpo, text="Calcular", font=("Arial", 11, "bold"),
-            bg="#2E86C1", fg="white", cursor="hand2", command=self.calcular,
+            lateral, text="Calcular", font=fuente(11, "bold"),
+            bg=C.PRIMARIO, fg="white", cursor="hand2", command=self.calcular,
         ).pack(fill="x", pady=(15, 10), ipady=6)
 
         # --- Resultados finales destacados ---
         marco_final = tk.Frame(
-            cuerpo, bg="#EAFAF1", bd=2, relief="solid",
-            highlightbackground="#1E8449", highlightthickness=2,
+            lateral, bg=C.EXITO_FONDO, bd=0,
+            highlightbackground=C.EXITO, highlightthickness=1,
         )
         marco_final.pack(fill="x", pady=(10, 15))
         tk.Label(
-            marco_final, text="✅ RESULTADOS DE LA REJILLA", font=("Arial", 11, "bold"),
-            bg="#EAFAF1", fg="#1E8449",
+            marco_final, text="✅ RESULTADOS DE LA REJILLA", font=fuente(11, "bold"),
+            bg=C.EXITO_FONDO, fg=C.EXITO,
         ).pack(pady=(10, 4))
 
-        fila = tk.Frame(marco_final, bg="#EAFAF1")
+        fila = tk.Frame(marco_final, bg=C.EXITO_FONDO)
         fila.pack(pady=(0, 4))
         self.lbl_area_rejilla = tk.Label(
-            fila, text="Área: — m²", font=("Arial", 13, "bold"), bg="#EAFAF1", fg="#1E8449",
+            fila, text="Área: — m²", font=fuente(13, "bold"), bg=C.EXITO_FONDO, fg=C.EXITO,
         )
         self.lbl_area_rejilla.pack(side="left", padx=10)
         self.lbl_ancho_rejilla = tk.Label(
-            fila, text="Ancho: — m", font=("Arial", 13, "bold"), bg="#EAFAF1", fg="#1E8449",
+            fila, text="Ancho: — m", font=fuente(13, "bold"), bg=C.EXITO_FONDO, fg=C.EXITO,
         )
         self.lbl_ancho_rejilla.pack(side="left", padx=10)
 
         self.lbl_perdidas = tk.Label(
             marco_final, text="Pérdidas en la rejilla (Δh): — m",
-            font=("Arial", 12, "bold"), bg="#EAFAF1", fg="#1E8449",
+            font=fuente(12, "bold"), bg=C.EXITO_FONDO, fg=C.EXITO,
         )
         self.lbl_perdidas.pack(pady=(0, 10))
 
         tk.Button(
-            cuerpo, text="💾 Guardar y continuar", font=("Arial", 12, "bold"),
-            bg="#28B463", fg="white", cursor="hand2", command=self.guardar,
+            lateral, text="💾 Guardar y continuar", font=fuente(12, "bold"),
+            bg=C.EXITO_BOTON, fg="white", cursor="hand2", command=self.guardar,
         ).pack(fill="x", ipady=8, pady=(0, 20))
 
         for entry in (self.entry_vf, self.entry_angulo, self.entry_diametro,

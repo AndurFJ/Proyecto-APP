@@ -40,9 +40,9 @@ class EstadoProyecto:
     # --- Caudal de diseño — PTAR ---
     # Mismos campos que el bloque de PTAP de arriba, pero independientes:
     # el caudal de diseño de una PTAR NO se calcula igual que el de una
-    # PTAP (aquí todavía no se han definido las fórmulas propias de PTAR;
-    # por ahora el módulo de cálculo es el mismo formulario, solo que
-    # guarda sus resultados en este bloque separado).
+    # PTAP. La ventana de caudal de aguas residuales (ventanas_ptar.py,
+    # Art. 134 y 166) llena ptar_caudal_ar y además los campos de aquí
+    # que aplican (nivel, dotación, Qmed, QMH y caudal de diseño).
     ptar_nivel_complejidad = None
     ptar_dotacion_neta_max = None
     ptar_coef_afectacion = None
@@ -106,6 +106,106 @@ class EstadoProyecto:
     desarenador_longitud_total = None    # m, longitud desarrollada total (todos los tramos)
     desarenador_ancho_total_estructura = None  # m, ancho de toda la estructura plegada
 
+    # --- Aducción / Conducción (Paso 5 - PTAP) ---
+    aduccion_tipo_sistema = None           # "Por gravedad" | "Por bombeo"
+    aduccion_material = None               # material de la tubería
+    aduccion_c_hazen_williams = None       # coeficiente C de Hazen-Williams
+    aduccion_longitud = None               # m
+    aduccion_diametro_mm = None            # mm, diámetro comercial adoptado
+    aduccion_area = None                   # m²
+    aduccion_velocidad = None              # m/s
+    aduccion_v_min = None                  # m/s (Art. 56, 0.5 m/s)
+    aduccion_v_max = None                  # m/s, según el material
+    aduccion_perdida_carga = None          # m (Hazen-Williams)
+    aduccion_factor_seguridad_ariete = None  # 1.1 gravedad | 1.3 bombeo
+    aduccion_desnivel_disponible = None    # m (opcional)
+    aduccion_presion_residual = None       # m (None si no hay desnivel)
+
+    # --- Mezcla rápida: Canaleta Parshall (Paso 5 - PTAP) ---
+    mezcla_temperatura = None          # °C
+    mezcla_ancho_garganta = None       # clave de la canaleta, ej. '9"' o "1'"
+    mezcla_w = None                    # m, ancho de garganta
+    mezcla_k = None                    # coeficiente K de Q = K·Ha^n
+    mezcla_n = None                    # exponente n de Q = K·Ha^n
+    mezcla_dimensiones_cm = None       # dict A, B, C, D, E, F, G, K, N (cm)
+    mezcla_ha = None                   # m, lámina en la sección de medición
+    mezcla_relacion_ha_w = None        # adimensional (recomendado 0.4-0.8)
+    mezcla_d_prima = None              # m, ancho en la sección de medición
+    mezcla_vo = None                   # m/s
+    mezcla_eo = None                   # m, energía específica
+    mezcla_v1 = None                   # m/s, velocidad en la garganta
+    mezcla_h1 = None                   # m
+    mezcla_froude = None               # adimensional
+    mezcla_h2 = None                   # m, altura conjugada del resalto
+    mezcla_v2 = None                   # m/s
+    mezcla_h3 = None                   # m, lámina a la salida
+    mezcla_v3 = None                   # m/s
+    mezcla_perdida = None              # m, pérdida en el resalto (hp)
+    mezcla_tiempo = None               # s, tiempo de mezcla
+    mezcla_gradiente = None            # s-1
+    mezcla_cumple = None               # bool
+
+    # --- Floculación: Floculador hidráulico de pantallas (Paso 6 - PTAP) ---
+    floculacion_num_unidades = None
+    floculacion_q_unidad = None        # m³/s
+    floculacion_temperatura = None     # °C
+    floculacion_profundidad = None     # m
+    floculacion_ancho_tanque = None    # m (longitud de las pantallas)
+    floculacion_espesor_pantalla = None  # m
+    floculacion_manning = None
+    floculacion_k_vueltas = None
+    floculacion_zonas = None           # lista de dicts (uno por zona)
+    floculacion_t_total = None         # min
+    floculacion_perdida_total = None   # m
+    floculacion_gradiente_medio = None  # s-1
+    floculacion_longitud_total = None  # m
+    floculacion_volumen = None         # m³ por unidad
+    floculacion_cumple = None          # bool
+
+    # --- Relleno sanitario (DORS): cálculo poblacional ---
+    # Independiente de los Datos Preliminares de PTAP/PTAR (ver
+    # relleno_sanitario.py para las fórmulas).
+    rs_departamento = None
+    rs_municipio = None
+    rs_area = None
+    rs_parametros = None          # dict: metodo (1|2|3) + tu,t1,pu,p1 ó t0,p0,r
+    rs_año_inicio = None          # primer año de la proyección
+    rs_datos_censales = None      # [(año, población), ...] (solo método 2)
+    rs_tabla_proyeccion = None    # DataFrame (AÑO, Aritmético, Geométrico, Exponencial), 50 años
+    rs_metodo_adoptado = None     # "Aritmético" | "Geométrico" | "Exponencial"
+    rs_año_horizonte = None       # último año de la proyección
+    rs_poblacion_diseño = None    # hab, en rs_año_horizonte con el método adoptado
+
+    # --- Relleno sanitario: residuos, volumen, área y celda diaria (Paso 2) ---
+    rsd_entradas = None           # dict con los datos digitados (vida útil, PPC, densidad...)
+    rsd_tabla = None              # DataFrame año por año (residuos y volúmenes)
+    rsd_volumen_total = None      # m³
+    rsd_residuos_total = None     # t en toda la vida útil
+    rsd_area_relleno = None       # m², Vrs / hrs
+    rsd_area_total = None         # m², F · Ars
+    rsd_celda_inicial = None      # dict: residuos_dia_laboral, volumen, area, largo
+    rsd_celda_final = None
+
+    @classmethod
+    def borrar_relleno_diseno(cls):
+        """El Paso 2 depende de la población del Paso 1: se borra si esta cambia."""
+        for nombre in ("rsd_entradas", "rsd_tabla", "rsd_volumen_total", "rsd_residuos_total",
+                       "rsd_area_relleno", "rsd_area_total", "rsd_celda_inicial", "rsd_celda_final"):
+            setattr(cls, nombre, None)
+
+    # --- Módulo PTAR (Planta de Tratamiento de Aguas Residuales) ---
+    # Cada estructura guarda un diccionario con lo que retorna su función
+    # en ptar_calculos.py ("valores", "filas", "verificaciones", "final",
+    # "cumple_todo") más las "entradas" que digitó el usuario. Así el
+    # informe PDF y las ventanas siguientes leen todo de un solo lugar.
+    ptar_caudal_ar = None              # Caudal de aguas residuales (Art. 134, 166)
+    ptar_rejillas = None               # Rejillas (Art. 186)
+    ptar_desarenador = None            # Desarenador (Art. 188)
+    ptar_trampa_grasas = None          # Trampa de grasas (Art. 185, 172)
+    ptar_uasb = None                   # Reactor UASB (Art. 191)
+    ptar_laguna_facultativa = None     # Laguna facultativa (Art. 199, 201)
+    ptar_lechos_secado = None          # Lechos de secado (Art. 211)
+
     @classmethod
     def esta_definido(cls):
         return cls.poblacion_diseño is not None
@@ -119,12 +219,43 @@ class EstadoProyecto:
         return cls.ptar_caudal_diseño_Ls is not None
 
     @classmethod
+    def ptar_definido(cls, atributo):
+        """True si la estructura PTAR guardada en `atributo` ya fue calculada."""
+        return getattr(cls, atributo, None) is not None
+
+    @classmethod
+    def ptar_valores(cls, atributo):
+        """Resultados numéricos ("valores") de una estructura PTAR guardada."""
+        guardado = getattr(cls, atributo, None)
+        return guardado["valores"] if guardado else None
+
+    @classmethod
     def rejilla_definida(cls):
         return cls.area_rejilla is not None
 
     @classmethod
     def desarenador_definido(cls):
         return cls.desarenador_longitud is not None
+
+    @classmethod
+    def aduccion_definida(cls):
+        return cls.aduccion_diametro_mm is not None
+
+    @classmethod
+    def mezcla_rapida_definida(cls):
+        return cls.mezcla_gradiente is not None
+
+    @classmethod
+    def floculacion_definida(cls):
+        return cls.floculacion_longitud_total is not None
+
+    @classmethod
+    def relleno_definido(cls):
+        return cls.rs_tabla_proyeccion is not None
+
+    @classmethod
+    def relleno_diseno_definido(cls):
+        return cls.rsd_tabla is not None
 
     @classmethod
     def resumen(cls):
@@ -154,6 +285,8 @@ class EstadoProyecto:
     def resumen_caudal_ptar(cls):
         if not cls.caudal_definido_ptar():
             return "Caudal de diseño (PTAR) aún no calculado."
+        if cls.ptar_caudal_ar is not None:
+            return cls.ptar_caudal_ar["final"]
         return (
             f"Nivel de complejidad: {cls.ptar_nivel_complejidad}\n"
             f"Qmd: {cls.ptar_qmd:,.2f} L/s   QMD: {cls.ptar_q_max_diario:,.2f} L/s   "
@@ -192,4 +325,76 @@ class EstadoProyecto:
             f"{cls.desarenador_ancho:,.2f} × {cls.desarenador_profundidad:,.2f} m{texto_tramos}\n"
             f"Vs: {cls.desarenador_vs:,.5f} m/s   Vh: {cls.desarenador_vh:,.3f} m/s   "
             f"Tiempo de retención: {cls.desarenador_t_retencion_min:,.1f} min"
+        )
+
+    @classmethod
+    def resumen_aduccion(cls):
+        if not cls.aduccion_definida():
+            return "Aducción / conducción aún no calculada."
+        texto_presion = (
+            f"\nCabeza residual disponible: {cls.aduccion_presion_residual:,.3f} m"
+            if cls.aduccion_presion_residual is not None
+            else ""
+        )
+        return (
+            f"{cls.aduccion_tipo_sistema} — {cls.aduccion_material} "
+            f"(C = {cls.aduccion_c_hazen_williams:,.0f})\n"
+            f"Diámetro: {cls.aduccion_diametro_mm:,.0f} mm   "
+            f"Longitud: {cls.aduccion_longitud:,.1f} m\n"
+            f"Velocidad: {cls.aduccion_velocidad:,.3f} m/s   "
+            f"Pérdida de carga: {cls.aduccion_perdida_carga:,.3f} m"
+            f"{texto_presion}"
+        )
+
+    @classmethod
+    def resumen_mezcla_rapida(cls):
+        if not cls.mezcla_rapida_definida():
+            return "Mezcla rápida aún no calculada."
+        return (
+            f"Canaleta Parshall W = {cls.mezcla_ancho_garganta} ({cls.mezcla_w * 100:g} cm)\n"
+            f"Ha: {cls.mezcla_ha:,.3f} m   F1: {cls.mezcla_froude:,.2f}   "
+            f"hp: {cls.mezcla_perdida:,.3f} m\n"
+            f"G: {cls.mezcla_gradiente:,.0f} s⁻¹   t de mezcla: {cls.mezcla_tiempo:,.2f} s"
+        )
+
+    @classmethod
+    def resumen_floculacion(cls):
+        if not cls.floculacion_definida():
+            return "Floculador aún no calculado."
+        gradientes = " → ".join(f"{z['gradiente']:,.1f}" for z in cls.floculacion_zonas)
+        return (
+            f"{cls.floculacion_num_unidades} unidad(es) — "
+            f"Q por unidad: {cls.floculacion_q_unidad:,.5f} m³/s\n"
+            f"Dimensiones (L×B×h): {cls.floculacion_longitud_total:,.2f} × "
+            f"{cls.floculacion_ancho_tanque:,.2f} × {cls.floculacion_profundidad:,.2f} m\n"
+            f"t total: {cls.floculacion_t_total:,.1f} min   G por zona: {gradientes} s⁻¹"
+
+        )
+
+    @classmethod
+    def resumen_relleno(cls):
+        if not cls.relleno_definido():
+            return "Cálculo poblacional del relleno sanitario aún no realizado."
+        ubicacion = (
+            f"{cls.rs_municipio} ({cls.rs_departamento}) — Área: {cls.rs_area}\n"
+            if cls.rs_municipio else ""
+        )
+        return (
+            f"{ubicacion}"
+            f"Proyección: {cls.rs_año_inicio} a {cls.rs_año_horizonte}\n"
+            f"Método adoptado: {cls.rs_metodo_adoptado}\n"
+            f"Población en {cls.rs_año_horizonte}: {cls.rs_poblacion_diseño:,.0f} hab."
+        )
+
+    @classmethod
+    def resumen_relleno_diseno(cls):
+        if not cls.relleno_diseno_definido():
+            return "Residuos, volumen y área del relleno aún no calculados."
+        e = cls.rsd_entradas
+        return (
+            f"Vida útil: {e['vida_util']} años   PPC inicial: {e['ppc']:g} kg/hab·día\n"
+            f"Residuos en la vida útil: {cls.rsd_residuos_total:,.0f} t\n"
+            f"Volumen total del relleno: {cls.rsd_volumen_total:,.0f} m³\n"
+            f"Área total requerida: {cls.rsd_area_total:,.0f} m² "
+            f"({cls.rsd_area_total / 10000:,.2f} ha)"
         )
