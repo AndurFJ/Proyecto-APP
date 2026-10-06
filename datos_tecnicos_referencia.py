@@ -209,6 +209,66 @@ TABLAS_REFERENCIA = [
         ],
         "notas": "El software interpola linealmente entre estos valores según la temperatura ingresada.",
     },
+
+    # ---------------- MEZCLA RÁPIDA ----------------
+    {
+        "categoria": "Mezcla Rápida",
+        "titulo": "Requisitos de Diseño para Mezcla Rápida (Canaleta Parshall)",
+        "fuente": "Resolución 0330 de 2017 (mod. Res. 799 de 2021); Romero Rojas / Arboleda",
+        "columnas": ["Parámetro", "Valor"],
+        "filas": [
+            ["Gradiente medio de velocidad (G)", "1000 - 2000 s⁻¹"],
+            ["Tiempo de mezcla en mezcladores hidráulicos", "< 1 s"],
+            ["Número de Froude del resalto", "1.7 - 2.5 ó 4.5 - 9.0"],
+            ["Relación Ha / W (recomendación)", "0.4 - 0.8"],
+        ],
+        "notas": (
+            "Evitar el rango de Froude 2.5 - 4.5 (resalto oscilante). El coagulante se "
+            "aplica en el resalto, a la salida de la garganta."
+        ),
+    },
+    {
+        "categoria": "Mezcla Rápida",
+        "titulo": "Canaletas Parshall Normalizadas — Q = K·Ha^n",
+        "fuente": "Azevedo Netto; Romero Rojas, 'Potabilización del agua'",
+        "columnas": ["W", "W (cm)", "K", "n", "Q mín (L/s)", "Q máx (L/s)"],
+        "filas": [
+            ['1"', "2.5", "0.0604", "1.550", "0.28", "5.67"],
+            ['2"', "5.1", "0.1207", "1.550", "0.57", "14.15"],
+            ['3"', "7.6", "0.176", "1.547", "0.85", "53.8"],
+            ['6"', "15.2", "0.381", "1.580", "1.42", "110.4"],
+            ['9"', "22.9", "0.535", "1.530", "2.58", "251.9"],
+            ["1'", "30.5", "0.690", "1.522", "3.11", "455.6"],
+            ["1.5'", "45.7", "1.054", "1.538", "4.25", "696.2"],
+            ["2'", "61.0", "1.426", "1.550", "11.89", "936.7"],
+            ["3'", "91.5", "2.182", "1.566", "17.26", "1426.3"],
+            ["4'", "122.0", "2.935", "1.578", "36.79", "1921.5"],
+            ["5'", "152.5", "3.728", "1.587", "62.8", "2422"],
+            ["6'", "183.0", "4.515", "1.595", "74.4", "2929"],
+            ["7'", "213.5", "5.306", "1.601", "115.4", "3440"],
+            ["8'", "244.0", "6.101", "1.606", "130.7", "3950"],
+        ],
+        "notas": "Q en m³/s y Ha en m. Las dimensiones A-N de cada canaleta están en ventana_mezcla_rapida.py.",
+    },
+
+    # ---------------- FLOCULACIÓN ----------------
+    {
+        "categoria": "Floculación",
+        "titulo": "Requisitos de Diseño para Floculadores Hidráulicos",
+        "fuente": "Resolución 0330 de 2017 (mod. Res. 799 de 2021); RAS Título C",
+        "columnas": ["Parámetro", "Valor"],
+        "filas": [
+            ["Gradiente medio de velocidad (G)", "20 - 70 s⁻¹ (decreciente)"],
+            ["Tiempo de retención total", "20 - 40 min"],
+            ["Velocidad del agua en los canales", "0.10 - 0.60 m/s"],
+            ["Paso libre en cada vuelta", "1.5 veces el ancho del canal"],
+            ["Coeficiente de pérdida por vuelta (K)", "2 - 4 (típico 3)"],
+        ],
+        "notas": (
+            "El tiempo de retención y los gradientes óptimos deberían confirmarse con "
+            "ensayos de jarras sobre el agua cruda."
+        ),
+    },
 ]
 
 

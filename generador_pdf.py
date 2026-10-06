@@ -340,6 +340,112 @@ def _seccion_aduccion_conduccion(story, estilos):
 
 
 # ----------------------------------------------------------------------
+def _seccion_mezcla_rapida(story, estilos):
+    story.append(Paragraph("6. Mezcla Rápida — Canaleta Parshall", estilos["seccion"]))
+    story.append(Paragraph(
+        "El coagulante se aplica en el resalto hidráulico de la canaleta Parshall. "
+        "Requisitos: G entre 1000 y 2000 1/s; Froude entre 1.7-2.5 o 4.5-9.0; "
+        "Ha/W recomendado entre 0.4 y 0.8.",
+        estilos["nota"],
+    ))
+    story.append(Spacer(1, 6))
+
+    dim = EstadoProyecto.mezcla_dimensiones_cm
+    pares = [
+        ("Caudal de diseño (m³/s)", f"{EstadoProyecto.caudal_diseño_m3s:,.5f}"),
+        ("Temperatura del agua (°C)", f"{EstadoProyecto.mezcla_temperatura:,.1f}"),
+        ("Ancho de garganta — W", f"{EstadoProyecto.mezcla_ancho_garganta} "
+                                  f"({EstadoProyecto.mezcla_w * 100:g} cm)"),
+        ("Ecuación de descarga", f"Q = {EstadoProyecto.mezcla_k:g} · Ha^{EstadoProyecto.mezcla_n:g}"),
+        ("Dimensiones normalizadas (cm)", "  ".join(f"{k}={v:g}" for k, v in dim.items())),
+        ("Lámina en la sección de medición — Ha (m)", f"{EstadoProyecto.mezcla_ha:,.4f}"),
+        ("Relación Ha / W", f"{EstadoProyecto.mezcla_relacion_ha_w:,.2f}"),
+        ("Ancho en la sección de medición — D' (m)", f"{EstadoProyecto.mezcla_d_prima:,.4f}"),
+        ("Velocidad en la sección de medición — Vo (m/s)", f"{EstadoProyecto.mezcla_vo:,.4f}"),
+        ("Energía específica — Eo (m)", f"{EstadoProyecto.mezcla_eo:,.4f}"),
+        ("Velocidad en la garganta — V1 (m/s)", f"{EstadoProyecto.mezcla_v1:,.4f}"),
+        ("Lámina en la garganta — h1 (m)", f"{EstadoProyecto.mezcla_h1:,.4f}"),
+        ("Número de Froude — F1", f"{EstadoProyecto.mezcla_froude:,.2f}"),
+        ("Altura conjugada del resalto — h2 (m)", f"{EstadoProyecto.mezcla_h2:,.4f}"),
+        ("Velocidad en el resalto — V2 (m/s)", f"{EstadoProyecto.mezcla_v2:,.4f}"),
+        ("Lámina a la salida — h3 (m)", f"{EstadoProyecto.mezcla_h3:,.4f}"),
+        ("Velocidad a la salida — V3 (m/s)", f"{EstadoProyecto.mezcla_v3:,.4f}"),
+        ("Pérdida de energía en el resalto — hp (m)", f"{EstadoProyecto.mezcla_perdida:,.4f}"),
+        ("Tiempo de mezcla (s)", f"{EstadoProyecto.mezcla_tiempo:,.3f}"),
+        ("¿Cumple los requisitos?", "Sí" if EstadoProyecto.mezcla_cumple else "No"),
+    ]
+    story.append(_tabla_datos(pares, estilos))
+    story.append(Spacer(1, 12))
+
+    story.append(_marco_resultado_final(
+        f"CANALETA PARSHALL W = {EstadoProyecto.mezcla_ancho_garganta}<br/>"
+        f"Gradiente de velocidad: {EstadoProyecto.mezcla_gradiente:,.0f} 1/s  —  "
+        f"Tiempo de mezcla: {EstadoProyecto.mezcla_tiempo:,.2f} s",
+        estilos,
+    ))
+    story.append(PageBreak())
+
+
+# ----------------------------------------------------------------------
+def _seccion_floculacion(story, estilos):
+    story.append(Paragraph("7. Floculación — Floculador Hidráulico de Pantallas", estilos["seccion"]))
+    story.append(Paragraph(
+        "Floculador de flujo horizontal con zonas de velocidad decreciente. Requisitos: "
+        "G entre 20 y 70 1/s (decreciente), tiempo total entre 20 y 40 min, "
+        "velocidad entre 0.10 y 0.60 m/s.",
+        estilos["nota"],
+    ))
+    story.append(Spacer(1, 6))
+
+    pares = [
+        ("Número de unidades en paralelo", f"{EstadoProyecto.floculacion_num_unidades:,.0f}"),
+        ("Caudal por unidad (m³/s)", f"{EstadoProyecto.floculacion_q_unidad:,.5f}"),
+        ("Temperatura del agua (°C)", f"{EstadoProyecto.floculacion_temperatura:,.1f}"),
+        ("Profundidad del agua — h (m)", f"{EstadoProyecto.floculacion_profundidad:,.2f}"),
+        ("Ancho del tanque — B (m)", f"{EstadoProyecto.floculacion_ancho_tanque:,.2f}"),
+        ("Espesor de las pantallas — e (m)", f"{EstadoProyecto.floculacion_espesor_pantalla:,.3f}"),
+        ("Coeficiente de Manning — n", f"{EstadoProyecto.floculacion_manning:,.3f}"),
+        ("Coeficiente de pérdida en vueltas — K", f"{EstadoProyecto.floculacion_k_vueltas:,.2f}"),
+        ("Tiempo de retención total (min)", f"{EstadoProyecto.floculacion_t_total:,.1f}"),
+        ("Pérdida de carga total (m)", f"{EstadoProyecto.floculacion_perdida_total:,.4f}"),
+        ("Gradiente medio (1/s)", f"{EstadoProyecto.floculacion_gradiente_medio:,.1f}"),
+        ("Volumen por unidad (m³)", f"{EstadoProyecto.floculacion_volumen:,.2f}"),
+        ("¿Cumple los requisitos?", "Sí" if EstadoProyecto.floculacion_cumple else "No"),
+    ]
+    story.append(_tabla_datos(pares, estilos))
+    story.append(Spacer(1, 10))
+
+    story.append(Paragraph("Resultados por zona", estilos["subseccion"]))
+    filas = [["Zona", "t (min)", "v (m/s)", "a (m)", "N canales", "L zona (m)", "hf (m)", "G (1/s)"]]
+    for i, z in enumerate(EstadoProyecto.floculacion_zonas, start=1):
+        filas.append([
+            str(i), f"{z['t_min']:,.1f}", f"{z['v']:,.2f}", f"{z['ancho_canal']:,.3f}",
+            str(z["num_canales"]), f"{z['longitud_zona']:,.2f}",
+            f"{z['perdida_total']:,.4f}", f"{z['gradiente']:,.1f}",
+        ])
+    tabla = Table(filas, colWidths=[1.4 * cm] + [2.08 * cm] * 7)
+    tabla.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, 0), AZUL),
+        ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+        ("FONTNAME", (0, 0), (-1, 0), FUENTE_NEGRITA),
+        ("FONTNAME", (0, 1), (-1, -1), FUENTE_NORMAL),
+        ("FONTSIZE", (0, 0), (-1, -1), 8),
+        ("ALIGN", (0, 0), (-1, -1), "CENTER"),
+        ("GRID", (0, 0), (-1, -1), 0.4, BORDE_TABLA),
+    ]))
+    story.append(tabla)
+    story.append(Spacer(1, 12))
+
+    story.append(_marco_resultado_final(
+        f"DIMENSIONES POR UNIDAD: {EstadoProyecto.floculacion_longitud_total:,.2f} × "
+        f"{EstadoProyecto.floculacion_ancho_tanque:,.2f} × "
+        f"{EstadoProyecto.floculacion_profundidad:,.2f} m (L×B×h)",
+        estilos,
+    ))
+    story.append(PageBreak())
+
+
+# ----------------------------------------------------------------------
 # Mapa: (¿está definida esta sección?) -> función que la escribe.
 # Para agregar un proceso nuevo, solo se añade una tupla aquí.
 SECCIONES = [
@@ -348,6 +454,8 @@ SECCIONES = [
     (lambda: EstadoProyecto.rejilla_definida(), _seccion_bocatoma_rejilla),
     (lambda: EstadoProyecto.desarenador_definido(), _seccion_desarenador),
     (lambda: EstadoProyecto.aduccion_definida(), _seccion_aduccion_conduccion),
+    (lambda: EstadoProyecto.mezcla_rapida_definida(), _seccion_mezcla_rapida),
+    (lambda: EstadoProyecto.floculacion_definida(), _seccion_floculacion),
 ]
 
 

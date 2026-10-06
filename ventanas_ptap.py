@@ -13,6 +13,8 @@ from estado_proyecto import EstadoProyecto
 from ventana_bocatoma_rejilla import VentanaBocatomaRejilla
 from ventana_desarenador import VentanaDesarenador
 from ventana_aduccion_conduccion import VentanaAduccionConduccion
+from ventana_mezcla_rapida import VentanaMezclaRapida
+from ventana_floculacion import VentanaFloculacion
 from ventana_datos_tecnicos import VentanaDatosTecnicos
 import tema
 from tema import C, fuente
@@ -117,6 +119,20 @@ class ProcesosPTAP(tk.Toplevel):
                 bg=C.EXITO_FONDO, fg=C.EXITO, highlightbackground=C.EXITO,
             )
 
+        btn_mezcla = self.botones.get("Mezcla rápida / coagulación")
+        if btn_mezcla and EstadoProyecto.mezcla_rapida_definida():
+            btn_mezcla.config(
+                text="✔     Mezcla rápida / coagulación",
+                bg=C.EXITO_FONDO, fg=C.EXITO, highlightbackground=C.EXITO,
+            )
+
+        btn_floculacion = self.botones.get("Floculación")
+        if btn_floculacion and EstadoProyecto.floculacion_definida():
+            btn_floculacion.config(
+                text="✔     Floculación",
+                bg=C.EXITO_FONDO, fg=C.EXITO, highlightbackground=C.EXITO,
+            )
+
     def abrir_proceso(self, nombre_proceso):
         if nombre_proceso == "Captación (bocatoma con rejilla)":
             self.abrir_bocatoma_rejilla()
@@ -128,6 +144,14 @@ class ProcesosPTAP(tk.Toplevel):
 
         if nombre_proceso == "Aducción / conducción":
             self.abrir_aduccion_conduccion()
+            return
+
+        if nombre_proceso == "Mezcla rápida / coagulación":
+            self.abrir_mezcla_rapida()
+            return
+
+        if nombre_proceso == "Floculación":
+            self.abrir_floculacion()
             return
 
         messagebox.showinfo(
@@ -171,6 +195,30 @@ class ProcesosPTAP(tk.Toplevel):
             return
 
         ventana = VentanaAduccionConduccion(self, al_guardar=self._actualizar_estado_botones)
+        ventana.grab_set()
+
+    def abrir_mezcla_rapida(self):
+        if not EstadoProyecto.caudal_definido():
+            messagebox.showwarning(
+                "Falta el caudal de diseño",
+                "Primero debe calcular el Caudal de Diseño antes de "
+                "diseñar la mezcla rápida.",
+            )
+            return
+
+        ventana = VentanaMezclaRapida(self, al_guardar=self._actualizar_estado_botones)
+        ventana.grab_set()
+
+    def abrir_floculacion(self):
+        if not EstadoProyecto.caudal_definido():
+            messagebox.showwarning(
+                "Falta el caudal de diseño",
+                "Primero debe calcular el Caudal de Diseño antes de "
+                "diseñar el floculador.",
+            )
+            return
+
+        ventana = VentanaFloculacion(self, al_guardar=self._actualizar_estado_botones)
         ventana.grab_set()
 
     def abrir_datos_tecnicos(self):
