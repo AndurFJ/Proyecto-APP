@@ -15,6 +15,7 @@ from ventanas_ptap import ProcesosPTAP
 from ventana_datos_preliminares import VentanaDatosPreliminares
 from ventana_caudal_diseno import VentanaCaudalDiseño
 from ventana_datos_tecnicos import VentanaDatosTecnicos
+from ventanas_relleno import ProcesosRelleno
 from estado_proyecto import EstadoProyecto
 from generador_pdf import generar_informe_pdf
 import tema
@@ -95,6 +96,13 @@ class AplicacionPrincipal(tk.Tk):
             "Pretratamiento, tratamiento primario y secundario de las aguas "
             "residuales del municipio.",
             C.PTAR, self.abrir_ptar,
+        )
+        self.lbl_estado_relleno = self.agregar_modulo(
+            "Relleno", "Relleno Sanitario (DORS)",
+            "Proyección poblacional, producción de residuos, volumen, área "
+            "y celda diaria del relleno sanitario.",
+            C.RELLENO, self.abrir_relleno_sanitario,
+            estado="⚠ Cálculo poblacional del relleno aún no realizado",
         )
 
     # ------------------------------------------------------------------
@@ -186,8 +194,11 @@ class AplicacionPrincipal(tk.Tk):
         tema.boton(interior, "Abrir  →", comando, tipo="secundario", tamano=10).pack(anchor="w")
         return lbl
 
-    def agregar_modulo(self, sigla, nombre, descripcion, color, comando):
-        """Agrega una tarjeta grande de módulo (PTAP, PTAR, ...) al panel."""
+    def agregar_modulo(self, sigla, nombre, descripcion, color, comando, estado=None):
+        """Agrega una tarjeta grande de módulo (PTAP, PTAR, ...) al panel.
+
+        Si se da ``estado``, la tarjeta muestra una etiqueta de estado y la devuelve.
+        """
         col = self._modulos % 2
         fila = self._modulos // 2
         self._modulos += 1
@@ -214,10 +225,19 @@ class AplicacionPrincipal(tk.Tk):
             fg=C.TEXTO_SECUNDARIO, anchor="w", justify="left",
         )
         tema.ajustar_al_ancho(lbl_desc).pack(fill="x", pady=(8, 16))
+        lbl_estado = None
+        if estado:
+            lbl_estado = tk.Label(
+                interior, text=estado, font=fuente(9, "bold"), bg=C.ADVERTENCIA_FONDO,
+                fg=C.ADVERTENCIA, anchor="w", justify="left", padx=10, pady=6,
+            )
+            tema.ajustar_al_ancho(lbl_estado, margen=20)
+            lbl_estado.pack(fill="x", pady=(0, 14))
         tk.Button(
             interior, text=f"Diseñar {sigla}  →", font=fuente(12, "bold"),
             bg=color, fg="white", padx=22, pady=10, command=comando,
         ).pack(anchor="w")
+        return lbl_estado
 
     def salir(self):
         respuesta = messagebox.askyesno("Salir", "¿Seguro que desea cerrar el programa?")
@@ -229,7 +249,7 @@ class AplicacionPrincipal(tk.Tk):
         ventana.grab_set()
 
     def exportar_informe(self):
-        if not EstadoProyecto.esta_definido():
+        if not (EstadoProyecto.esta_definido() or EstadoProyecto.relleno_definido()):
             respuesta = messagebox.askyesno(
                 "Datos preliminares requeridos",
                 "Aún no hay nada calculado. Para exportar el informe, primero "
@@ -244,7 +264,7 @@ class AplicacionPrincipal(tk.Tk):
             title="Guardar informe como PDF",
             defaultextension=".pdf",
             filetypes=[("Documento PDF", "*.pdf")],
-            initialfile=f"Informe_PTAP_{EstadoProyecto.municipio or 'proyecto'}.pdf",
+            initialfile=f"Informe_PTAP_{EstadoProyecto.municipio or EstadoProyecto.rs_municipio or 'proyecto'}.pdf",
         )
         if not ruta:
             return
@@ -348,6 +368,21 @@ class AplicacionPrincipal(tk.Tk):
 
         ventana = ProcesosPTAP(self)
         ventana.grab_set()
+
+    def abrir_relleno_sanitario(self):
+        ventana = ProcesosRelleno(self, al_guardar=self._actualizar_estado_relleno)
+        ventana.grab_set()
+
+    def _actualizar_estado_relleno(self):
+        if EstadoProyecto.relleno_diseno_definido():
+            texto = (f"✔ Relleno sanitario — Volumen: {EstadoProyecto.rsd_volumen_total:,.0f} m³, "
+                     f"área: {EstadoProyecto.rsd_area_total / 10000:,.2f} ha")
+        elif EstadoProyecto.relleno_definido():
+            texto = (f"✔ Relleno sanitario — Población {EstadoProyecto.rs_año_horizonte}: "
+                     f"{EstadoProyecto.rs_poblacion_diseño:,.0f} hab.")
+        else:
+            return
+        self.lbl_estado_relleno.config(text=texto, fg=C.EXITO, bg=C.EXITO_FONDO)
 
     def abrir_ptar(self):
         messagebox.showinfo(

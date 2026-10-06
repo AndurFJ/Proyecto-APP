@@ -80,6 +80,7 @@ class C:
     # Módulos
     PTAP = "#0B6BCB"
     PTAR = "#0E9F6E"
+    RELLENO = "#A04000"
     INFORME = "#6E4BD8"
 
 

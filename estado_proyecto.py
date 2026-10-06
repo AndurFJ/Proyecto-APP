@@ -162,6 +162,37 @@ class EstadoProyecto:
     floculacion_volumen = None         # m³ por unidad
     floculacion_cumple = None          # bool
 
+    # --- Relleno sanitario (DORS): cálculo poblacional ---
+    # Independiente de los Datos Preliminares de PTAP/PTAR (ver
+    # relleno_sanitario.py para las fórmulas).
+    rs_departamento = None
+    rs_municipio = None
+    rs_area = None
+    rs_parametros = None          # dict: metodo (1|2|3) + tu,t1,pu,p1 ó t0,p0,r
+    rs_año_inicio = None          # primer año de la proyección
+    rs_datos_censales = None      # [(año, población), ...] (solo método 2)
+    rs_tabla_proyeccion = None    # DataFrame (AÑO, Aritmético, Geométrico, Exponencial), 50 años
+    rs_metodo_adoptado = None     # "Aritmético" | "Geométrico" | "Exponencial"
+    rs_año_horizonte = None       # último año de la proyección
+    rs_poblacion_diseño = None    # hab, en rs_año_horizonte con el método adoptado
+
+    # --- Relleno sanitario: residuos, volumen, área y celda diaria (Paso 2) ---
+    rsd_entradas = None           # dict con los datos digitados (vida útil, PPC, densidad...)
+    rsd_tabla = None              # DataFrame año por año (residuos y volúmenes)
+    rsd_volumen_total = None      # m³
+    rsd_residuos_total = None     # t en toda la vida útil
+    rsd_area_relleno = None       # m², Vrs / hrs
+    rsd_area_total = None         # m², F · Ars
+    rsd_celda_inicial = None      # dict: residuos_dia_laboral, volumen, area, largo
+    rsd_celda_final = None
+
+    @classmethod
+    def borrar_relleno_diseno(cls):
+        """El Paso 2 depende de la población del Paso 1: se borra si esta cambia."""
+        for nombre in ("rsd_entradas", "rsd_tabla", "rsd_volumen_total", "rsd_residuos_total",
+                       "rsd_area_relleno", "rsd_area_total", "rsd_celda_inicial", "rsd_celda_final"):
+            setattr(cls, nombre, None)
+
     @classmethod
     def esta_definido(cls):
         return cls.poblacion_diseño is not None
@@ -193,6 +224,14 @@ class EstadoProyecto:
     @classmethod
     def floculacion_definida(cls):
         return cls.floculacion_longitud_total is not None
+
+    @classmethod
+    def relleno_definido(cls):
+        return cls.rs_tabla_proyeccion is not None
+
+    @classmethod
+    def relleno_diseno_definido(cls):
+        return cls.rsd_tabla is not None
 
     @classmethod
     def resumen(cls):
@@ -303,4 +342,33 @@ class EstadoProyecto:
             f"Dimensiones (L×B×h): {cls.floculacion_longitud_total:,.2f} × "
             f"{cls.floculacion_ancho_tanque:,.2f} × {cls.floculacion_profundidad:,.2f} m\n"
             f"t total: {cls.floculacion_t_total:,.1f} min   G por zona: {gradientes} s⁻¹"
+
+        )
+
+    @classmethod
+    def resumen_relleno(cls):
+        if not cls.relleno_definido():
+            return "Cálculo poblacional del relleno sanitario aún no realizado."
+        ubicacion = (
+            f"{cls.rs_municipio} ({cls.rs_departamento}) — Área: {cls.rs_area}\n"
+            if cls.rs_municipio else ""
+        )
+        return (
+            f"{ubicacion}"
+            f"Proyección: {cls.rs_año_inicio} a {cls.rs_año_horizonte}\n"
+            f"Método adoptado: {cls.rs_metodo_adoptado}\n"
+            f"Población en {cls.rs_año_horizonte}: {cls.rs_poblacion_diseño:,.0f} hab."
+        )
+
+    @classmethod
+    def resumen_relleno_diseno(cls):
+        if not cls.relleno_diseno_definido():
+            return "Residuos, volumen y área del relleno aún no calculados."
+        e = cls.rsd_entradas
+        return (
+            f"Vida útil: {e['vida_util']} años   PPC inicial: {e['ppc']:g} kg/hab·día\n"
+            f"Residuos en la vida útil: {cls.rsd_residuos_total:,.0f} t\n"
+            f"Volumen total del relleno: {cls.rsd_volumen_total:,.0f} m³\n"
+            f"Área total requerida: {cls.rsd_area_total:,.0f} m² "
+            f"({cls.rsd_area_total / 10000:,.2f} ha)"
         )
