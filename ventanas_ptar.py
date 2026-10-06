@@ -13,7 +13,7 @@ por cada estructura del tren de tratamiento adoptado:
     7. Lechos de secado de lodos .... Art. 211 (Tabla 44)
 
 Las fórmulas están en ptar_calculos.py, los rangos normativos en
-ptar_criterios.py y la apariencia en ptar_ui.py (TEMA). Este archivo
+ptar_criterios.py y la apariencia en ptar_ui.py / tema.py. Este archivo
 solo une las tres cosas: qué datos pide cada ventana, de dónde salen
 los datos de pasos anteriores y dónde se guarda el resultado.
 """
@@ -23,8 +23,11 @@ from tkinter import messagebox
 
 import ptar_calculos as calc
 import ptar_criterios as C
+import tema
+from tema import fuente
+from tema import C as T
 from estado_proyecto import EstadoProyecto
-from ptar_ui import TEMA, VentanaCalculoPTAR, RequisitoFaltante, campo
+from ptar_ui import VentanaCalculoPTAR, RequisitoFaltante, campo
 from ui_utils import ajustar_geometria
 from ventana_caudal_diseno import nivel_de_complejidad
 from ventana_datos_tecnicos import VentanaDatosTecnicos
@@ -398,51 +401,77 @@ VENTANAS_PTAR = {
 class ProcesosPTAR(tk.Toplevel):
     """Ventana con el listado de procesos de diseño de una PTAR."""
 
+    # Nota: en este módulo `C` es ptar_criterios; los colores del tema
+    # se importan como `T` (tema.C).
+
     def __init__(self, master, al_guardar_caudal=None):
         super().__init__(master)
         self.title("PTAR — Procesos de diseño")
-        self.resizable(False, True)
-        ajustar_geometria(self, ancho=420, alto=540, alto_minimo=400)
-        self.configure(bg=TEMA["fondo"])
+        ajustar_geometria(self)
+        self.configure(bg=T.FONDO)
         self.al_guardar_caudal = al_guardar_caudal
 
         self._crear_widgets()
         self._actualizar_estado_botones()
 
     def _crear_widgets(self):
-        f = TEMA["fuente"]
+        tema.encabezado(
+            self, "PTAR — Procesos de diseño",
+            "Planta de Tratamiento de Aguas Residuales · elija la estructura que desea diseñar",
+        )
+
+        cuerpo = tema.area_desplazable(self, bg=T.FONDO, ancho_max=1180, padx=40)
+
         tk.Label(
-            self, text="PTAR — Procesos de diseño", font=(f, 14, "bold"),
-            bg="#28B463", fg="white", pady=12,
-        ).pack(fill="x")
+            cuerpo, text="MÓDULO PTAR · AGUAS RESIDUALES", font=fuente(9, "bold"),
+            bg=T.FONDO, fg=T.PTAR, anchor="w",
+        ).pack(fill="x", pady=(28, 0))
 
-        tk.Button(
-            self, text="📚 Datos Técnicos de Referencia",
-            font=(f, 9, "bold"), bg="#5DADE2", fg="white",
-            activebackground="#2E86C1", bd=0, cursor="hand2",
-            command=self.abrir_datos_tecnicos,
-        ).pack(fill="x", padx=20, pady=(10, 0), ipady=4)
+        barra = tk.Frame(cuerpo, bg=T.FONDO)
+        barra.pack(fill="x", pady=(2, 4))
+        tk.Label(
+            barra, text="Procesos de la planta", font=fuente(18, "bold"),
+            bg=T.FONDO, fg=T.TEXTO, anchor="w",
+        ).pack(side="left")
+        tema.boton(
+            barra, "📚  Datos técnicos de referencia", self.abrir_datos_tecnicos,
+            tipo="secundario", tamano=10,
+        ).pack(side="right")
 
-        contenedor = tk.Frame(self, bg=TEMA["fondo"])
-        contenedor.pack(fill="both", expand=True, padx=20, pady=15)
+        tk.Label(
+            cuerpo,
+            text="Los procesos marcados con ✔ ya fueron calculados y guardados. "
+                 "Empiece por el caudal de diseño.",
+            font=fuente(10), bg=T.FONDO, fg=T.TEXTO_SECUNDARIO, anchor="w",
+        ).pack(fill="x", pady=(0, 14))
+
+        contenedor = tk.Frame(cuerpo, bg=T.FONDO)
+        contenedor.pack(fill="x", pady=(0, 30))
+        columnas = 2
+        for c in range(columnas):
+            contenedor.grid_columnconfigure(c, weight=1, uniform="procesos")
 
         self.botones = {}
         for i, (atributo, nombre) in enumerate(calc.ESTRUCTURAS_PTAR, start=1):
             btn = tk.Button(
-                contenedor, text=f"{i}. {nombre}", font=(f, 11), bg="white",
-                fg="#1B2631", anchor="w", relief="groove", bd=1, cursor="hand2",
+                contenedor, text=f"{i:02d}    {nombre}", font=fuente(12, "bold"),
+                bg=T.SUPERFICIE, fg=T.TEXTO, anchor="w", padx=24, pady=22,
+                highlightthickness=1, highlightbackground=T.BORDE, cursor="hand2",
                 command=lambda a=atributo: self.abrir_proceso(a),
             )
-            btn.pack(fill="x", pady=4, ipady=8)
-            self.botones[atributo] = (btn, f"{i}. {nombre}")
+            btn.grid(row=(i - 1) // columnas, column=(i - 1) % columnas,
+                     sticky="nsew", padx=6, pady=6)
+            self.botones[atributo] = (btn, nombre)
 
     def _actualizar_estado_botones(self):
         """Marca con ✔ los procesos que ya fueron calculados y guardados."""
-        for atributo, (btn, texto) in self.botones.items():
+        for i, (atributo, (btn, nombre)) in enumerate(self.botones.items(), start=1):
             if EstadoProyecto.ptar_definido(atributo):
-                btn.config(text=f"✔ {texto}", bg="#EAFAF1", fg="#1E8449")
+                btn.config(text=f"✔     {nombre}", bg=T.EXITO_FONDO, fg=T.EXITO,
+                           highlightbackground=T.EXITO)
             else:
-                btn.config(text=texto, bg="white", fg="#1B2631")
+                btn.config(text=f"{i:02d}    {nombre}", bg=T.SUPERFICIE, fg=T.TEXTO,
+                           highlightbackground=T.BORDE)
 
     def _al_guardar(self, atributo):
         self._actualizar_estado_botones()

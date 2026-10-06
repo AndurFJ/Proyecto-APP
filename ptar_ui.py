@@ -13,42 +13,23 @@ Cada ventana concreta solo declara:
     - calcular_resultado(datos): función de ptar_calculos.py
     - ATRIBUTO_ESTADO: dónde se guarda en EstadoProyecto
 
-ESTILO: todos los colores y fuentes están en el diccionario TEMA de
-abajo. Para re-estilizar todas las ventanas de la PTAR basta con
-cambiar ese diccionario (o reemplazar los métodos `_crear_*` de la
-clase base); ninguna ventana concreta define colores propios.
+ESTILO: los colores, fuentes y bloques de interfaz (encabezado,
+tarjeta del formulario, panel lateral de resultados) vienen de tema.py,
+igual que en el resto de HydroLab; ninguna ventana concreta define
+colores propios.
 """
 
 import tkinter as tk
 from tkinter import ttk, messagebox
 
+import tema
+from tema import C, fuente
 from estado_proyecto import EstadoProyecto
-from ui_utils import ajustar_geometria, hacer_scrollable
+from ui_utils import ajustar_geometria
 
 
-# Paleta y fuentes — mismas del resto de HydroLab.
-TEMA = {
-    "fuente": "Arial",
-    "fondo": "#F2F4F4",
-    "titulo_bg": "#1F4E78",
-    "titulo_fg": "white",
-    "subtitulo_fg": "#D9E1F2",
-    "texto": "black",
-    "editable_fg": "#B9770E",
-    "editable_bg": "#FEF9E7",
-    "editable_borde": "#F1C40F",
-    "resultado_bg": "white",
-    "resultado_fg": "#1B4F72",
-    "nota_fg": "#7B7D7D",
-    "seccion_fg": "#1F4E78",
-    "ok_fg": "#1E8449",
-    "alerta_fg": "#B9770E",
-    "final_bg": "#EAFAF1",
-    "final_fg": "#1E8449",
-    "boton_calcular_bg": "#2E86C1",
-    "boton_guardar_bg": "#28B463",
-    "boton_fg": "white",
-}
+# Ancho (px) de los textos largos dentro de la tarjeta del formulario.
+ANCHO_TEXTO = 760
 
 
 class RequisitoFaltante(Exception):
@@ -68,15 +49,12 @@ class VentanaCalculoPTAR(tk.Toplevel):
     SUBTITULO = ""
     TITULO_FINAL = "✅ RESULTADO"
     ATRIBUTO_ESTADO = None
-    ANCHO = 640
-    ALTO = 820
 
     def __init__(self, master, al_guardar=None):
         super().__init__(master)
         self.title(self.TITULO.title())
-        self.resizable(False, True)
-        ajustar_geometria(self, ancho=self.ANCHO, alto=self.ALTO)
-        self.configure(bg=TEMA["fondo"])
+        ajustar_geometria(self)
+        self.configure(bg=C.FONDO)
 
         self.al_guardar = al_guardar
         self.entradas = {}
@@ -143,40 +121,13 @@ class VentanaCalculoPTAR(tk.Toplevel):
     # Construcción de la interfaz
     # ------------------------------------------------------------------
     def _crear_estilos(self):
-        estilo = ttk.Style(self)
-        estilo.configure(
-            "Editable.TEntry", fieldbackground=TEMA["editable_bg"],
-            bordercolor=TEMA["editable_borde"], lightcolor=TEMA["editable_borde"],
-        )
-        estilo.configure("Editable.TCombobox", fieldbackground=TEMA["editable_bg"])
-        estilo.map("Editable.TCombobox", fieldbackground=[("readonly", TEMA["editable_bg"])])
+        """Los estilos Editable.TEntry / Editable.TCombobox los define tema.py."""
 
     def _crear_widgets(self):
-        f = TEMA["fuente"]
-        tk.Label(
-            self, text=self.TITULO, font=(f, 14, "bold"),
-            bg=TEMA["titulo_bg"], fg=TEMA["titulo_fg"], pady=10,
-        ).pack(fill="x")
-        if self.SUBTITULO:
-            tk.Label(
-                self, text=self.SUBTITULO, font=(f, 8, "italic"),
-                bg=TEMA["titulo_bg"], fg=TEMA["subtitulo_fg"], pady=6,
-                wraplength=self.ANCHO - 40,
-            ).pack(fill="x")
-
-        contenedor = tk.Frame(self, bg=TEMA["fondo"])
-        contenedor.pack(fill="both", expand=True)
-        self.canvas = tk.Canvas(contenedor, bg=TEMA["fondo"], highlightthickness=0)
-        scrollbar = ttk.Scrollbar(contenedor, orient="vertical", command=self.canvas.yview)
-        self.canvas.configure(yscrollcommand=scrollbar.set)
-        self.canvas.pack(side="left", fill="both", expand=True)
-        scrollbar.pack(side="right", fill="y")
-        cuerpo_ext = tk.Frame(self.canvas, bg=TEMA["fondo"])
-        hacer_scrollable(self.canvas, cuerpo_ext)
-
-        cuerpo = tk.Frame(cuerpo_ext, bg=TEMA["fondo"])
-        cuerpo.pack(fill="both", expand=True, padx=20, pady=15)
+        cuerpo, lateral = tema.layout_formulario(self, self.TITULO, self.SUBTITULO or None)
+        self.canvas = cuerpo.canvas
         self.cuerpo = cuerpo
+        self.lateral = lateral
 
         info = self.info_base()
         if info:
@@ -208,78 +159,80 @@ class VentanaCalculoPTAR(tk.Toplevel):
             if c["nota"]:
                 self._nota(cuerpo, c["nota"])
 
-        tk.Button(
-            cuerpo, text="Calcular", font=(f, 11, "bold"),
-            bg=TEMA["boton_calcular_bg"], fg=TEMA["boton_fg"], cursor="hand2",
-            command=self.calcular,
-        ).pack(fill="x", pady=(15, 10), ipady=6)
-
         self._seccion(cuerpo, "Resultados")
-        self.marco_resultados = tk.Frame(cuerpo, bg=TEMA["fondo"])
+        self.marco_resultados = tk.Frame(cuerpo, bg=C.SUPERFICIE)
         self.marco_resultados.pack(fill="x")
 
         self._seccion(cuerpo, "Verificación normativa")
-        self.marco_verificaciones = tk.Frame(cuerpo, bg=TEMA["fondo"])
-        self.marco_verificaciones.pack(fill="x")
+        self.marco_verificaciones = tk.Frame(cuerpo, bg=C.SUPERFICIE)
+        self.marco_verificaciones.pack(fill="x", pady=(0, 8))
+
+        # --- Panel lateral: Calcular, resultado final y Guardar ---
+        tk.Button(
+            lateral, text="Calcular", font=fuente(11, "bold"),
+            bg=C.PRIMARIO, fg="white", cursor="hand2",
+            command=self.calcular,
+        ).pack(fill="x", pady=(15, 10), ipady=6)
 
         marco_final = tk.Frame(
-            cuerpo, bg=TEMA["final_bg"], bd=2, relief="solid",
-            highlightbackground=TEMA["final_fg"], highlightthickness=2,
+            lateral, bg=C.EXITO_FONDO, bd=0,
+            highlightbackground=C.EXITO, highlightthickness=1,
         )
-        marco_final.pack(fill="x", pady=(15, 15))
+        marco_final.pack(fill="x", pady=(10, 15))
+        self.marco_final = marco_final
         tk.Label(
-            marco_final, text=self.TITULO_FINAL, font=(f, 11, "bold"),
-            bg=TEMA["final_bg"], fg=TEMA["final_fg"],
-        ).pack(pady=(10, 4))
+            marco_final, text=self.TITULO_FINAL, font=fuente(11, "bold"),
+            bg=C.EXITO_FONDO, fg=C.EXITO,
+            justify="center", wraplength=tema.ANCHO_TEXTO_LATERAL,
+        ).pack(pady=(10, 4), padx=10)
         self.lbl_final = tk.Label(
-            marco_final, text="—", font=(f, 12, "bold"), bg=TEMA["final_bg"],
-            fg=TEMA["final_fg"], justify="center", wraplength=self.ANCHO - 80,
+            marco_final, text="—", font=fuente(12, "bold"), bg=C.EXITO_FONDO,
+            fg=C.EXITO, justify="center", wraplength=tema.ANCHO_TEXTO_LATERAL,
         )
-        self.lbl_final.pack(pady=(0, 4))
+        self.lbl_final.pack(pady=(0, 4), padx=10)
         self.lbl_cumple = tk.Label(
-            marco_final, text="", font=(f, 9, "bold"), bg=TEMA["final_bg"],
-            fg=TEMA["final_fg"], justify="center",
+            marco_final, text="", font=fuente(9, "bold"), bg=C.EXITO_FONDO,
+            fg=C.EXITO, justify="center", wraplength=tema.ANCHO_TEXTO_LATERAL,
         )
-        self.lbl_cumple.pack(pady=(0, 10))
+        self.lbl_cumple.pack(pady=(0, 10), padx=10)
 
         tk.Button(
-            cuerpo, text="💾 Guardar y continuar", font=(f, 12, "bold"),
-            bg=TEMA["boton_guardar_bg"], fg=TEMA["boton_fg"], cursor="hand2",
+            lateral, text="💾 Guardar y continuar", font=fuente(12, "bold"),
+            bg=C.EXITO_BOTON, fg="white", cursor="hand2",
             command=self.guardar,
         ).pack(fill="x", ipady=8, pady=(0, 20))
 
         self.update_idletasks()
-        self.canvas.configure(scrollregion=self.canvas.bbox("all"))
         self.canvas.yview_moveto(0)
 
     def _seccion(self, padre, texto):
         tk.Label(
-            padre, text=texto.upper(), font=(TEMA["fuente"], 9, "bold"),
-            bg=TEMA["fondo"], fg=TEMA["seccion_fg"], anchor="w",
-        ).pack(fill="x", pady=(14, 0))
-        tk.Frame(padre, bg=TEMA["seccion_fg"], height=1).pack(fill="x", pady=(0, 2))
+            padre, text=texto.upper(), font=fuente(9, "bold"),
+            bg=C.SUPERFICIE, fg=C.TEXTO_TENUE, anchor="w",
+        ).pack(fill="x", pady=(16, 2))
+        tk.Frame(padre, bg=C.BORDE, height=1).pack(fill="x", pady=(0, 2))
 
     def _etiqueta(self, padre, texto, editable=False):
         if editable:
             texto = f"✎ {texto}   (dato editable)"
         tk.Label(
-            padre, text=texto, font=(TEMA["fuente"], 10, "bold" if editable else "normal"),
-            bg=TEMA["fondo"], fg=TEMA["editable_fg"] if editable else TEMA["texto"],
-            anchor="w", justify="left", wraplength=self.ANCHO - 60,
+            padre, text=texto, font=fuente(10, "bold" if editable else "normal"),
+            bg=C.SUPERFICIE, fg=C.EDITABLE_TEXTO if editable else C.TEXTO,
+            anchor="w", justify="left", wraplength=ANCHO_TEXTO,
         ).pack(fill="x", pady=(8, 2))
 
     def _valor(self, padre, texto):
         tk.Label(
-            padre, text=texto, font=(TEMA["fuente"], 11, "bold"),
-            bg=TEMA["resultado_bg"], fg=TEMA["resultado_fg"], anchor="w",
-            relief="solid", bd=1,
+            padre, text=texto, font=fuente(11, "bold"),
+            bg=C.RESULTADO_FONDO, fg=C.RESULTADO_TEXTO, anchor="w",
+            relief="flat", bd=0, highlightthickness=1, highlightbackground=C.BORDE, padx=8,
         ).pack(fill="x", ipady=4)
 
     def _nota(self, padre, texto):
         tk.Label(
-            padre, text=texto, font=(TEMA["fuente"], 8, "italic"),
-            bg=TEMA["fondo"], fg=TEMA["nota_fg"], anchor="w", justify="left",
-            wraplength=self.ANCHO - 60,
+            padre, text=texto, font=fuente(8, "italic"),
+            bg=C.SUPERFICIE, fg=C.TEXTO_TENUE, anchor="w", justify="left",
+            wraplength=ANCHO_TEXTO,
         ).pack(fill="x", pady=(0, 2))
 
     # ------------------------------------------------------------------
@@ -345,15 +298,15 @@ class VentanaCalculoPTAR(tk.Toplevel):
             tk.Label(
                 self.marco_verificaciones,
                 text=("✔ " if cumple else "⚠ ") + texto,
-                font=(TEMA["fuente"], 9, "bold"), bg=TEMA["fondo"],
-                fg=TEMA["ok_fg"] if cumple else TEMA["alerta_fg"],
-                anchor="w", justify="left", wraplength=self.ANCHO - 60,
+                font=fuente(9, "bold"), bg=C.SUPERFICIE,
+                fg=C.EXITO if cumple else C.ADVERTENCIA,
+                anchor="w", justify="left", wraplength=ANCHO_TEXTO,
             ).pack(fill="x", pady=1)
         self.lbl_final.config(text=r["final"])
         self.lbl_cumple.config(
             text="✔ Cumple los criterios verificados de la Res. 0330 de 2017"
-            if r["cumple_todo"] else "⚠ Revise los parámetros marcados arriba",
-            fg=TEMA["final_fg"] if r["cumple_todo"] else TEMA["alerta_fg"],
+            if r["cumple_todo"] else "⚠ Revise los parámetros marcados con ⚠ en la verificación normativa",
+            fg=C.EXITO if r["cumple_todo"] else C.ADVERTENCIA,
         )
 
     def guardar(self):
